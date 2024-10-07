@@ -7,7 +7,6 @@ This project is created for the NUS ME5418 Machine Learning in Robotics. We are 
 ![Ubuntu 20.04](https://img.shields.io/badge/OS-Ubuntu_20.04-informational?style=flat&logo=ubuntu&logoColor=white&color=2bbc8a)
 ![Gymnasium](https://img.shields.io/badge/Tools-Gymnasium_1.0-informational?style=flat&logo=OpenAI&logoColor=white&color=2bbc8a)
 ![Python](https://img.shields.io/badge/Code-Python_3.8-informational?style=flat&logo=Python&logoColor=white&color=2bbc8a)
-![Gymnasium](https://img.shields.io/badge/Tools-Gymnasium_1.0-informational?style=flat&logo=OpenAI&logoColor=white&color=2bbc8a)
 ![HighwayEnv](https://img.shields.io/github/v/release/Farama-Foundation/HighwayEnv?style=flat&color=2bbc8a&label=HighwayEnv)
 
 
