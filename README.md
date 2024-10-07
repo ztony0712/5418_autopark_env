@@ -7,16 +7,24 @@ This project is created for the NUS ME5418 Machine Learning in Robotics. We are 
 ![Ubuntu 20.04](https://img.shields.io/badge/OS-Ubuntu_20.04-informational?style=flat&logo=ubuntu&logoColor=white&color=2bbc8a)
 ![Gymnasium](https://img.shields.io/badge/Tools-Gymnasium_1.0-informational?style=flat&logo=OpenAI&logoColor=white&color=2bbc8a)
 ![Python](https://img.shields.io/badge/Code-Python_3.8-informational?style=flat&logo=Python&logoColor=white&color=2bbc8a)
-![HighwayEnv](https://img.shields.io/github/v/release/Farama-Foundation/HighwayEnv?style=flat&color=2bbc8a&label=HighwayEnv)
-
 
 <!-- > Video Presentation -->
 <!-- [![ROS SLAM, Perception, and Navigation based on Gazebo simulation](https://img.youtube.com/vi/WiEzSJmcEQE/0.jpg)](https://www.youtube.com/watch?v=WiEzSJmcEQE) -->
 
-As you see in the video, we have implemented the following techniques:
+<!-- As you see in the video, we have implemented the following techniques: -->
 <!-- - For SLAM: The Fast-lio algorithm is chosen for 3D LiDAR SLAM  -->
 
 For more detail information, please check our report pdf file.
+
+## Dependencies
+The following dependencies are required to visualize the parking environment:
+```bash
+# Install the dependencies of gym highway-env
+sudo apt-get update -y
+sudo apt-get install -y python-dev libsdl-image1.2-dev libsdl-mixer1.2-dev
+    libsdl-ttf2.0-dev libsdl1.2-dev libsmpeg-dev python-numpy subversion libportmidi-dev
+    ffmpeg libswscale-dev libavformat-dev libavcodec-dev libfreetype6-dev gcc
+```
 
 ## Installation
 First of all, clone this repo to your root directory:
@@ -29,27 +37,12 @@ cd 5418_sac_parking
 
 Then, install the required packages using conda:
 ```bash
-# No need now, just create a new one
-conda create -n 5418_sac_parking python=3.8
+# Create the conda environment
+conda create -f environment.yml
 
 # Activate the environment
 conda activate 5418_sac_parking
 ```
-
-This repo is developed based on gym highway-env. To install it, follow the instructions below:
-```bash
-# Install the dependencies of gym highway-env
-sudo apt-get update -y
-sudo apt-get install -y python-dev libsdl-image1.2-dev libsdl-mixer1.2-dev
-    libsdl-ttf2.0-dev libsdl1.2-dev libsmpeg-dev python-numpy subversion libportmidi-dev
-    ffmpeg libswscale-dev libavformat-dev libavcodec-dev libfreetype6-dev gcc
-
-# Install the gym highway-env development version
-pip install --user git+https://github.com/eleurent/highway-env
-```
-
-
-
 
 ## Usage
 
