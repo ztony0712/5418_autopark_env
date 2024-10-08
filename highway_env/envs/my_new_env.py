@@ -46,14 +46,20 @@ class Road:
         self.objects = []
 
 class Vehicle:
-    def __init__(self, road, position, heading=0):
+    def __init__(self, road, position, heading=0, steering_angle=0):
         self.road = road
         self.position = np.array(position, dtype=np.float32)
-        self.heading = heading
+        self.heading = heading  # 朝向角度
+        self.steering_angle = steering_angle  # 转向角度
+        self.velocity = 5.0  # 固定速度，沿车辆的前进方向移动
 
     def step(self, dt):
-        self.position[0] += dt * np.cos(self.heading)
-        self.position[1] += dt * np.sin(self.heading)
+        # 更新朝向（转向角度影响朝向）
+        self.heading += self.steering_angle * dt
+        
+        # 更新位置（沿着当前朝向前进）
+        self.position[0] += self.velocity * dt * np.cos(self.heading)
+        self.position[1] += self.velocity * dt * np.sin(self.heading)
 
 class Landmark:
     def __init__(self, road, position, heading=0):
@@ -71,8 +77,12 @@ class VehicleGraphics:
     @staticmethod
     def display(vehicle, screen):
         """在屏幕上显示车辆"""
-        vehicle_rect = pygame.Rect(int(vehicle.position[0]), int(vehicle.position[1]), 20, 10)
-        pygame.draw.rect(screen, (255, 255, 0), vehicle_rect)  # 黄色的车
+        vehicle_surface = pygame.Surface((40, 20))  # 创建一个表示车辆的表面，尺寸为 40x20
+        vehicle_surface.set_colorkey((0, 0, 0))  # 设置透明色
+        vehicle_surface.fill((255, 255, 0))  # 填充黄色
+        rotated_vehicle = pygame.transform.rotate(vehicle_surface, -np.degrees(vehicle.heading))  # 旋转车辆表面，使其朝向当前的 heading
+        vehicle_rect = rotated_vehicle.get_rect(center=(int(vehicle.position[0]), int(vehicle.position[1])))  # 获取旋转后的位置矩形
+        screen.blit(rotated_vehicle, vehicle_rect.topleft)  # 绘制旋转后的车辆
 
     @staticmethod
     def draw_parking_lanes(screen, lane_width, lane_height, num_rows, num_cols, screen_width, screen_height):
@@ -154,7 +164,6 @@ class MyNewEnv(Env):
         self.vehicle = Vehicle(self.road, [initial_x, initial_y], heading=0)  # 固定初始位置
         self.road.vehicles.append(self.vehicle)
 
-
     def _create_goal(self):
         # 随机选择 goal 的位置
         num_cols = 10
@@ -193,15 +202,15 @@ class MyNewEnv(Env):
         return self.state, {}
 
     def step(self, action):
-        # 根据动作更新车辆朝向
-        if action == 0:
-            self.vehicle.heading -= 0.1
-        elif action == 1:
-            self.vehicle.heading += 0.1
-        elif action == 2:
-            pass
+        # 根据动作更新车辆的转向角度
+        if action == 0:  # 左转
+            self.vehicle.steering_angle = -0.1
+        elif action == 1:  # 右转
+            self.vehicle.steering_angle = 0.1
+        elif action == 2:  # 直行
+            self.vehicle.steering_angle = 0.0
 
-        # 更新车辆的位置
+        # 更新车辆的位置和朝向
         self.vehicle.step(1.0)
 
         # 获取当前车辆的位置
@@ -215,13 +224,12 @@ class MyNewEnv(Env):
         if self.vehicle.position[0] < x_min or self.vehicle.position[0] > x_max or self.vehicle.position[1] < y_min or self.vehicle.position[1] > y_max:
             print("Vehicle out of bounds, resetting environment.")
             self.reset()  # 车辆超出范围，重置环境
-            return self.state, -1, True, False, {}  # 返回一个负的奖励，并标记 `done=True`
+            return self.state, -1, False, False, {}  # 返回一个负的奖励，并标记 `done=True`
 
         # 车辆到达目标位置的检测
         done = self.state[0] >= 150 and self.state[1] == 50  # 可以根据实际需要调整目标位置的条件
         reward = 1 if done else -0.1
         return self.state, reward, done, False, {}
-
 
     def render(self, mode='human'):
         # 绘制背景

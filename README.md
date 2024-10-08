@@ -5,7 +5,7 @@ This project is created for the NUS ME5418 Machine Learning in Robotics. We are 
 > Authors: [Yimin](https://github.com/ztony0712), [Guorong](https://github.com/z492x), [Zeren](https://github.com/HardyPavel)
 
 ![Ubuntu 20.04](https://img.shields.io/badge/OS-Ubuntu_20.04-informational?style=flat&logo=ubuntu&logoColor=white&color=2bbc8a)
-![Gymnasium](https://img.shields.io/badge/Tools-Gymnasium_1.0-informational?style=flat&logo=OpenAI&logoColor=white&color=2bbc8a)
+![Gymnasium](https://img.shields.io/badge/Tools-Gymnasium_0.29.1-informational?style=flat&logo=OpenAI&logoColor=white&color=2bbc8a)
 ![Python](https://img.shields.io/badge/Code-Python_3.8-informational?style=flat&logo=Python&logoColor=white&color=2bbc8a)
 
 <!-- > Video Presentation -->
