@@ -188,7 +188,7 @@ class MyNewEnv(Env):
         for row in range(num_rows):
             for col in range(num_cols):
                 vehicle_x = start_x + col * lane_width + lane_width // 2
-                vehicle_y = start_y + row * lane_height + lane_height // 2
+                vehicle_y = start_y + row * lane_height + lane_height // 4
 
                 # 确保静止车辆不会生成在目标点的位置
                 if self.goal_position and (abs(vehicle_x - self.goal_position[0]) < lane_width // 2 and abs(vehicle_y - self.goal_position[1]) < lane_height // 2):
