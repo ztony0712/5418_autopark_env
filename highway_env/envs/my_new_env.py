@@ -75,18 +75,22 @@ class Obstacle:
 
 class VehicleGraphics:
     @staticmethod
-    def display(vehicle, screen):
-        """在屏幕上显示车辆"""
+    def display(vehicle, screen, color=(255, 255, 0)):
+        """
+        在屏幕上显示车辆
+        """
         vehicle_surface = pygame.Surface((40, 20))  # 创建一个表示车辆的表面，尺寸为 40x20
         vehicle_surface.set_colorkey((0, 0, 0))  # 设置透明色
-        vehicle_surface.fill((255, 255, 0))  # 填充黄色
+        vehicle_surface.fill(color)  # 填充指定颜色
         rotated_vehicle = pygame.transform.rotate(vehicle_surface, -np.degrees(vehicle.heading))  # 旋转车辆表面，使其朝向当前的 heading
         vehicle_rect = rotated_vehicle.get_rect(center=(int(vehicle.position[0]), int(vehicle.position[1])))  # 获取旋转后的位置矩形
         screen.blit(rotated_vehicle, vehicle_rect.topleft)  # 绘制旋转后的车辆
 
     @staticmethod
     def draw_parking_lanes(screen, lane_width, lane_height, num_rows, num_cols, screen_width, screen_height):
-        """绘制停车位的白色线条并确保居中和竖直显示"""
+        """
+        绘制停车位的白色线条并确保居中和竖直显示
+        """
         total_width = num_cols * lane_width  # 总宽度
         total_height = num_rows * lane_height  # 总高度
         
@@ -104,13 +108,17 @@ class VehicleGraphics:
 
     @staticmethod
     def draw_goal(screen, goal_x, goal_y, goal_width=15, goal_height=15):
-        """绘制目标停车点"""
+        """
+        绘制目标停车点
+        """
         goal_rect = pygame.Rect(goal_x, goal_y, goal_width, goal_height)
         pygame.draw.rect(screen, (0, 255, 0), goal_rect)  # 绿色的停车目标
 
     @staticmethod
     def draw_walls(screen, walls):
-        """绘制墙壁"""
+        """
+        绘制墙壁
+        """
         for wall in walls:
             wall_rect = pygame.Rect(int(wall.position[0]), int(wall.position[1]), 70, 10)  # 墙的大小
             pygame.draw.rect(screen, (255, 0, 0), wall_rect)  # 红色的墙
@@ -125,6 +133,7 @@ class MyNewEnv(Env):
         self.state = None
         self.road = None
         self.vehicle = None
+        self.static_vehicles = []  # 静止车辆列表
         self.walls = []
 
         # 初始化 pygame
@@ -164,6 +173,31 @@ class MyNewEnv(Env):
         self.vehicle = Vehicle(self.road, [initial_x, initial_y], heading=0)  # 固定初始位置
         self.road.vehicles.append(self.vehicle)
 
+    def _create_static_vehicles(self):
+        # 清除之前的静止车辆
+        self.static_vehicles.clear()
+
+        # 创建静止的蓝色车辆作为障碍物
+        num_cols = 10
+        num_rows = 3
+        lane_width = 40
+        lane_height = 100
+        start_x = (self.screen_width - num_cols * lane_width) // 2
+        start_y = (self.screen_height - num_rows * lane_height) // 2
+
+        for row in range(num_rows):
+            for col in range(num_cols):
+                vehicle_x = start_x + col * lane_width + lane_width // 2
+                vehicle_y = start_y + row * lane_height + lane_height // 2
+
+                # 确保静止车辆不会生成在目标点的位置
+                if self.goal_position and (abs(vehicle_x - self.goal_position[0]) < lane_width // 2 and abs(vehicle_y - self.goal_position[1]) < lane_height // 2):
+                    continue
+
+                if random.random() < 0.3:  # 以 30% 的概率放置静止车辆
+                    static_vehicle = Vehicle(self.road, [vehicle_x, vehicle_y], heading=np.pi / 2)  # 竖直方向，中心对齐停车位
+                    self.static_vehicles.append(static_vehicle)
+
     def _create_goal(self):
         # 随机选择 goal 的位置
         num_cols = 10
@@ -196,6 +230,7 @@ class MyNewEnv(Env):
         self._create_road()
         self._create_vehicle()
         self._create_goal()
+        self._create_static_vehicles()
         self._create_walls()
 
         self.state = np.array([self.vehicle.position[0], self.vehicle.position[1]], dtype=np.float32)
@@ -213,23 +248,96 @@ class MyNewEnv(Env):
         # 更新车辆的位置和朝向
         self.vehicle.step(1.0)
 
-        # 获取当前车辆的位置
-        self.state = np.array([self.vehicle.position[0], self.vehicle.position[1]], dtype=np.float32)
+        # 检查车辆是否连边框
+        vehicle_width = 40
+        vehicle_height = 20
+        x, y = self.vehicle.position
+        heading = self.vehicle.heading
+        cos_h = np.cos(heading)
+        sin_h = np.sin(heading)
+        half_width = vehicle_width / 2
+        half_height = vehicle_height / 2
+        corner_offsets = [
+            np.array([half_width * cos_h - half_height * sin_h, half_width * sin_h + half_height * cos_h]),
+            np.array([half_width * cos_h + half_height * sin_h, half_width * sin_h - half_height * cos_h]),
+            np.array([-half_width * cos_h + half_height * sin_h, -half_width * sin_h - half_height * cos_h]),
+            np.array([-half_width * cos_h - half_height * sin_h, -half_width * sin_h + half_height * cos_h]),
+        ]
+        out_of_bounds = False
+        for offset in corner_offsets:
+            corner_x = x + offset[0]
+            corner_y = y + offset[1]
+            if corner_x < 0 or corner_x > self.screen_width or corner_y < 0 or corner_y > self.screen_height:
+                out_of_bounds = True
+                break
 
-        # 定义运动范围
-        x_min, x_max = 0, self.screen_width
-        y_min, y_max = 0, self.screen_height
-
-        # 检查车辆是否超出运动范围
-        if self.vehicle.position[0] < x_min or self.vehicle.position[0] > x_max or self.vehicle.position[1] < y_min or self.vehicle.position[1] > y_max:
-            print("Vehicle out of bounds, resetting environment.")
-            self.reset()  # 车辆超出范围，重置环境
+        # 车辆连边框或与静止车辆相碰，則重置环境
+        if out_of_bounds or self._check_collision():
+            print("Vehicle out of bounds or collision detected, resetting environment.")
+            self.reset()  # 车辆连边框或相碰，重置环境
             return self.state, -1, False, False, {}  # 返回一个负的奖励，并标记 `done=True`
 
-        # 车辆到达目标位置的检测
-        done = self.state[0] >= 150 and self.state[1] == 50  # 可以根据实际需要调整目标位置的条件
-        reward = 1 if done else -0.1
-        return self.state, reward, done, False, {}
+        # 更新状态
+        self.state = np.array([self.vehicle.position[0], self.vehicle.position[1]], dtype=np.float32)
+        reward = -0.1
+        return self.state, reward, False, False, {}
+
+    def _check_collision(self):
+        """
+        检查黄车是否与静止的蓝车发生碰撞
+        """
+        vehicle_corners = self._get_vehicle_corners(self.vehicle)
+        for static_vehicle in self.static_vehicles:
+            static_vehicle_corners = self._get_vehicle_corners(static_vehicle)
+            if self._check_rect_collision(vehicle_corners, static_vehicle_corners):
+                return True
+        return False
+
+    def _get_vehicle_corners(self, vehicle):
+        """
+        获取车辆四个角的坐标，考虑车辆的旋转
+        """
+        vehicle_width = 40
+        vehicle_height = 20
+        x, y = vehicle.position
+        heading = vehicle.heading
+        cos_h = np.cos(heading)
+        sin_h = np.sin(heading)
+        half_width = vehicle_width / 2
+        half_height = vehicle_height / 2
+
+        corners = [
+            np.array([x + half_width * cos_h - half_height * sin_h, y + half_width * sin_h + half_height * cos_h]),
+            np.array([x + half_width * cos_h + half_height * sin_h, y + half_width * sin_h - half_height * cos_h]),
+            np.array([x - half_width * cos_h + half_height * sin_h, y - half_width * sin_h - half_height * cos_h]),
+            np.array([x - half_width * cos_h - half_height * sin_h, y - half_width * sin_h + half_height * cos_h]),
+        ]
+        return corners
+
+    def _check_rect_collision(self, corners1, corners2):
+        """
+        检查两个矩形（由四个顶点表示）是否碰撞
+        """
+        for corner in corners1:
+            if self._point_in_rect(corner, corners2):
+                return True
+        for corner in corners2:
+            if self._point_in_rect(corner, corners1):
+                return True
+        return False
+
+    def _point_in_rect(self, point, rect_corners):
+        """
+        检查一个点是否在由四个角定义的矩形内
+        """
+        x, y = point
+        rect = pygame.Rect(
+            min(rect_corners[0][0], rect_corners[1][0], rect_corners[2][0], rect_corners[3][0]),
+            min(rect_corners[0][1], rect_corners[1][1], rect_corners[2][1], rect_corners[3][1]),
+            max(rect_corners[0][0], rect_corners[1][0], rect_corners[2][0], rect_corners[3][0]) - min(rect_corners[0][0], rect_corners[1][0], rect_corners[2][0], rect_corners[3][0]),
+            max(rect_corners[0][1], rect_corners[1][1], rect_corners[2][1], rect_corners[3][1]) - min(rect_corners[0][1], rect_corners[1][1], rect_corners[2][1], rect_corners[3][1])
+        )
+        return rect.collidepoint(x, y)
 
     def render(self, mode='human'):
         # 绘制背景
@@ -242,8 +350,9 @@ class MyNewEnv(Env):
         if self.goal_position:
             VehicleGraphics.draw_goal(self.screen, self.goal_position[0], self.goal_position[1])
 
-        # # 绘制墙壁
-        # VehicleGraphics.draw_walls(self.screen, self.walls)
+        # 绘制静止车辆
+        for static_vehicle in self.static_vehicles:
+            VehicleGraphics.display(static_vehicle, self.screen, color=(0, 0, 255))  # 蓝色的静止车辆
 
         # 绘制车辆
         for vehicle in self.road.vehicles:
