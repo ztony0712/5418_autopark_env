@@ -1,4 +1,4 @@
-name: parking
+name: autopark
 channels:
   - defaults
 dependencies:
@@ -28,8 +28,7 @@ dependencies:
   - pip:
       - cloudpickle==3.0.0
       - farama-notifications==0.0.4
-      - gymnasium==0.29.1
+      - gymnasium==1.0.0
       - numpy==2.1.2
       - pygame==2.6.1
       - typing-extensions==4.12.2
-prefix: /home/zgr/anaconda3/envs/parking
