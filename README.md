@@ -6,7 +6,7 @@ This project is created for the NUS ME5418 Machine Learning in Robotics. We are 
 
 ![Ubuntu 20.04](https://img.shields.io/badge/OS-Ubuntu_20.04-informational?style=flat&logo=ubuntu&logoColor=white&color=2bbc8a)
 ![Gymnasium](https://img.shields.io/badge/Tools-Gymnasium_0.29.1-informational?style=flat&logo=OpenAI&logoColor=white&color=2bbc8a)
-![Python](https://img.shields.io/badge/Code-Python_3.8-informational?style=flat&logo=Python&logoColor=white&color=2bbc8a)
+![Python](https://img.shields.io/badge/Code-Python_3.12-informational?style=flat&logo=Python&logoColor=white&color=2bbc8a)
 
 <!-- > Video Presentation -->
 <!-- [![ROS SLAM, Perception, and Navigation based on Gazebo simulation](https://img.youtube.com/vi/WiEzSJmcEQE/0.jpg)](https://www.youtube.com/watch?v=WiEzSJmcEQE) -->
@@ -45,12 +45,6 @@ conda activate 5418_sac_parking
 ```
 
 ## Usage
-
-### 0. Install Environment
-```bash
-# Install customized gym parking environment
-pip install -e .
-```
 
 ### 1. Test Parking Environment
 Run test_env.py script to check the environment
