@@ -41,7 +41,7 @@ Then, install the required packages using conda:
 conda create -f environment.yml
 
 # Activate the environment
-conda activate 5418_autopark_env
+conda activate autopark
 ```
 
 ## Usage
