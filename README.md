@@ -38,7 +38,7 @@ cd 5418_autopark_env
 Then, install the required packages using conda:
 ```bash
 # Create the conda environment
-conda create -f environment.yml
+conda env create -f environment.yml
 
 # Activate the environment
 conda activate autopark
