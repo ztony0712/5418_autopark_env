@@ -3,7 +3,7 @@
 from gymnasium.envs.registration import register
 
 def register_my_envs():
-    # 注册你的自定义环境
+    # Register your custom environment
     register(
         id='my-new-env-v0',
         entry_point='autopark_env.envs.my_new_env:MyNewEnv',
@@ -11,6 +11,5 @@ def register_my_envs():
         reward_threshold=100.0,
     )
 
-# 执行注册
+# Execute registration
 register_my_envs()
-

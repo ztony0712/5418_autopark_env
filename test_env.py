@@ -1,16 +1,15 @@
 # test_env.py
-import autopark_env  # 确保 highway_env 正确导入
+import autopark_env  # Ensure autopark_env is correctly imported
 import gymnasium as gym
-from autopark_env.envs.my_new_env import MyNewEnv  # 导入我们定义的停车环境
+from autopark_env.envs.my_new_env import MyNewEnv  # Import our defined parking environment
 
-# 使用 MyNewEnv 进行测试
-env = MyNewEnv()  # 创建环境实例
+# Use MyNewEnv for testing
+env = MyNewEnv()  # Create an instance of the environment
 obs, info = env.reset()
 done = False
 
 while not done:
-    action = env.action_space.sample()  # 随机选择一个动作
+    action = env.action_space.sample()  # Randomly select an action
     obs, reward, done, truncated, info = env.step(action)
-    env.render()  # 显示车辆位置
+    env.render()  # Display vehicle position
 env.close()
-
