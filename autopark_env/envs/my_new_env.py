@@ -3,10 +3,11 @@ from gymnasium import Env
 from gymnasium.spaces import Discrete, Box
 import pygame
 import random
+import gymnasium as gym
 
 from .components.lane import LineType, Lane, StraightLane, CircularLane
 from .components.road import RoadNetwork, Road
-from .components.vehicle import Vehicle
+from .components.vehicle import StaticVehicle, Vehicle
 from .components.landmark import Landmark, Obstacle
 from .components.graphics import VehicleGraphics
 
@@ -29,10 +30,10 @@ STEERING_ANGLE = 0.1  # 转向角度
 STEP_REWARD = -0.1  # 每步的奖励
 FPS = 30  # 帧率
 
-class MyNewEnv(Env):
+class MyNewEnv(gym.Env):
     def __init__(self):
         super(MyNewEnv, self).__init__()
-        self.action_space = Discrete(3)  # 三个动作：左转、直行、右转
+        self.action_space = gym.spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float32)
         # 更新观察空间的上限为屏幕尺寸的最大值
         self.observation_space = Box(low=0, high=max(SCREEN_WIDTH, SCREEN_HEIGHT), shape=(2,), dtype=np.float32)
         self.state = None
@@ -63,7 +64,7 @@ class MyNewEnv(Env):
 
     def _create_vehicle(self):
         # 使用全局变量设置初始位置
-        self.vehicle = Vehicle(self.road, [INITIAL_VEHICLE_X, INITIAL_VEHICLE_Y], heading=0)
+        self.vehicle = Vehicle([INITIAL_VEHICLE_X, INITIAL_VEHICLE_Y], heading=0)
         self.road.vehicles.append(self.vehicle)
 
     def _create_static_vehicles(self):
@@ -82,7 +83,7 @@ class MyNewEnv(Env):
                     continue
 
                 if random.random() < STATIC_VEHICLE_PROBABILITY: # 以 30% 的概率放置静止车辆
-                    static_vehicle = Vehicle(self.road, [vehicle_x, vehicle_y], heading=np.pi / 2) # 竖直方向，中心对齐停车位
+                    static_vehicle = StaticVehicle([vehicle_x, vehicle_y], heading=np.pi / 2) # 竖直方向，中心对齐停车位
                     self.static_vehicles.append(static_vehicle)
 
     def _create_goal(self):
@@ -117,27 +118,41 @@ class MyNewEnv(Env):
         return self.state, {}
 
     def step(self, action):
-        # 根据动作更新车辆的转向角度
-        if action == 0:  # 左转
-            self.vehicle.steering_angle = -STEERING_ANGLE
-        elif action == 1:  # 右转
-            self.vehicle.steering_angle = STEERING_ANGLE
-        elif action == 2:  # 直行
-            self.vehicle.steering_angle = 0.0
+        # 解析动作
+        steering = action[0]*0.1  # 范围 [-0.1, 0.1]
+        acceleration = action[1]  # 范围 [-1, 1]
 
-        # 更新车辆的位置和朝向
-        self.vehicle.step(1.0)
+        # 更新车辆状态
+        self.vehicle.action["steering"] = steering
+        self.vehicle.action["acceleration"] = acceleration
+        self.vehicle.step(1.0)  # 使用 FPS 来计算时间步长
 
         # 检查车辆是否触碰边框或发生碰撞
         if self._check_out_of_bounds() or self._check_collision():
             print("Vehicle out of bounds or collision detected, resetting environment.")
-            self.reset()  # 车辆触碰边框或相碰，重置环境
-            return self.state, -1, False, False, {}  # 返回一个负的奖励，并标记 `done=True`
+            return self.reset()[0], -1, False, False, {}  # 返回一个负的奖励，并标记 done=True
 
         # 更新状态
-        self.state = np.array(self.vehicle.position, dtype=np.float32)
-        reward = STEP_REWARD
+        self.state = self._get_obs()
+        reward = self._get_reward()
+        # done = self._check_goal()
+
         return self.state, reward, False, False, {}
+
+    def _get_obs(self):
+        # 返回观察状态，例如车辆位置、速度、朝向等
+        return np.array([
+            *self.vehicle.position,
+            self.vehicle.velocity,
+            self.vehicle.heading,
+            self.vehicle.steering_angle
+        ], dtype=np.float32)
+
+    def _get_reward(self):
+        # 实现奖励函数
+        # 这里只是一个示例，您可能需要根据具体需求调整
+        goal_distance = np.linalg.norm(self.vehicle.position - self.goal_position)
+        return -goal_distance  # 距离目标越近，奖励越高
 
     def _check_out_of_bounds(self):
         """
