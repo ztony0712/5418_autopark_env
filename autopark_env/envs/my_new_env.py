@@ -251,14 +251,18 @@ class MyNewEnv(gym.Env):
         if not (isinstance(x, (int, float)) and isinstance(y, (int, float))):
             return False
         
-        # Calculate rectangle boundaries
-        min_x = min(corner[0] for corner in rect_corners)
-        max_x = max(corner[0] for corner in rect_corners)
-        min_y = min(corner[1] for corner in rect_corners)
-        max_y = max(corner[1] for corner in rect_corners)
+        def sign(p1, p2, p3):
+            return (p1[0] - p3[0]) * (p2[1] - p3[1]) - (p2[0] - p3[0]) * (p1[1] - p3[1])
         
-        # Check if the point is inside the rectangle
-        return min_x <= x <= max_x and min_y <= y <= max_y
+        d1 = sign(point, rect_corners[0], rect_corners[1])
+        d2 = sign(point, rect_corners[1], rect_corners[2])
+        d3 = sign(point, rect_corners[2], rect_corners[3])
+        d4 = sign(point, rect_corners[3], rect_corners[0])
+
+        has_neg = (d1 < 0) or (d2 < 0) or (d3 < 0) or (d4 < 0)
+        has_pos = (d1 > 0) or (d2 > 0) or (d3 > 0) or (d4 > 0)
+
+        return not (has_neg and has_pos)
 
     def render(self):
         self.screen.fill((100, 100, 100))  # Gray background
