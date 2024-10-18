@@ -34,7 +34,9 @@ class MyNewEnv(gym.Env):
         super(MyNewEnv, self).__init__()
         self.action_space = gym.spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float32)
         # Update the upper limit of the observation space to the maximum of screen dimensions
-        self.observation_space = Box(low=0, high=max(SCREEN_WIDTH, SCREEN_HEIGHT), shape=(2,), dtype=np.float32)
+        self.observation_space = Box(low=np.array([0, 0, 0, 0]), 
+                             high=np.array([800, 600, 10, 2 * np.pi]), 
+                             dtype=np.float32)
         self.state = None
         self.parking_lot = None
         self.vehicle = None
