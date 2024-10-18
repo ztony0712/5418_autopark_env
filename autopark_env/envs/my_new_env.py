@@ -21,6 +21,7 @@ VEHICLE_WIDTH = 40
 VEHICLE_HEIGHT = 20
 GOAL_SIZE = 25
 STATIC_VEHICLE_PROBABILITY = 0.3
+SAFE_DISTANCE = 20  # Safety threshold for distance to obstacles
 
 # Additional global parameters
 INITIAL_VEHICLE_X = (SCREEN_WIDTH - NUM_COLS * LANE_WIDTH) // 2 - 30
@@ -34,8 +35,8 @@ class MyNewEnv(gym.Env):
         super(MyNewEnv, self).__init__()
         self.action_space = gym.spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float32)
         self.observation_space = Box(
-            low=np.array([0, 0, 0, 0], dtype=np.float32),
-            high=np.array([800, 600, 10, 2 * np.pi], dtype=np.float32),
+            low=np.array([0, 0, 0, 0, 0, 0], dtype=np.float32),  # Increase dimensions
+            high=np.array([800, 600, 10, 2 * np.pi, 800, 600], dtype=np.float32),  # Update upper bounds
             dtype=np.float32
         )
         self.state = None
@@ -114,12 +115,7 @@ class MyNewEnv(gym.Env):
         self._create_walls()
 
         # Initialize the state to include vehicle position, velocity, and heading
-        self.state = np.array([
-            self.vehicle.position[0],  # x coordinate
-            self.vehicle.position[1],  # y coordinate
-            self.vehicle.velocity,       # vehicle speed
-            self.vehicle.heading         # vehicle heading
-        ], dtype=np.float32)
+        self.state = self._get_obs()  # Directly obtain the state
         
         return self.state, {}
 
@@ -141,18 +137,62 @@ class MyNewEnv(gym.Env):
         # Update state
         self.state = self._get_obs()
         reward = self._get_reward()
-        # done = self._check_goal()
 
         return self.state, reward, False, False, {}
 
+    def choose_action(self, state):
+        # state contains all the state information as an array
+        nearest_obstacle_distance = state[4]  # Assuming this is the distance to the nearest obstacle
+
+        # Choose actions based on the distance to the obstacle
+        if nearest_obstacle_distance < SAFE_DISTANCE:  # SAFE_DISTANCE is a threshold
+            action = np.array([0.1, -1])  # Slow down and slightly steer
+        else:
+            action = np.array([0.1, 1])  # Normal acceleration
+
+        return action
+
     def _get_obs(self):
-        # Return observation state, including vehicle position, velocity, and heading
+        # Get the distance to the nearest obstacle and wall
+        nearest_obstacle_distance = self._get_nearest_obstacle_distance()
+        nearest_wall_distance = self._get_nearest_wall_distance()
+        
         return np.array([
             self.vehicle.position[0],  # x coordinate
             self.vehicle.position[1],  # y coordinate
             self.vehicle.velocity,       # vehicle speed
-            self.vehicle.heading         # vehicle heading
+            self.vehicle.heading,        # vehicle heading
+            nearest_obstacle_distance,    # Distance to the nearest obstacle
+            nearest_wall_distance         # Distance to the nearest wall
         ], dtype=np.float32)
+
+    def _get_nearest_obstacle_distance(self):
+        """
+        Calculate the distance from the vehicle to the nearest obstacle
+        """
+        min_distance = float('inf')  # Initialize to infinity
+        vehicle_position = np.array(self.vehicle.position)
+
+        # Iterate through all static obstacles and calculate distances
+        for obstacle in self.parking_lot.static_vehicles:
+            obstacle_position = np.array(obstacle.position)
+            distance = np.linalg.norm(vehicle_position - obstacle_position)
+            min_distance = min(min_distance, distance)
+
+        return min_distance
+
+    def _get_nearest_wall_distance(self):
+        """
+        Calculate the distance from the vehicle to the walls
+        """
+        vehicle_position = np.array(self.vehicle.position)
+        distances = [
+            vehicle_position[0],  # Distance to the left wall
+            SCREEN_WIDTH - vehicle_position[0],  # Distance to the right wall
+            vehicle_position[1],  # Distance to the top wall
+            SCREEN_HEIGHT - vehicle_position[1]   # Distance to the bottom wall
+        ]
+        return min(distances)  # Return the minimum distance
 
     def _get_reward(self):
         # Calculate the current state s
