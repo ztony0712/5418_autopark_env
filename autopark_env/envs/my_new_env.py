@@ -206,7 +206,7 @@ class MyNewEnv(gym.Env):
 
     def _check_collision(self):
         """
-        使用分离轴定理检查黄色车辆是否与静止的蓝色车辆发生碰撞
+        Use Separating Axis Theorem to check if the yellow vehicle collides with stationary blue vehicles
         """
         vehicle_corners = self._get_vehicle_corners(self.vehicle)
         for static_vehicle in self.parking_lot.static_vehicles:
@@ -217,22 +217,22 @@ class MyNewEnv(gym.Env):
 
     def _sat_collision(self, corners1, corners2):
         """
-        使用分离轴定理检查两个凸多边形（由顶点定义）是否碰撞
+        Use Separating Axis Theorem to check if two convex polygons (defined by vertices) collide
         """
         for shape in [corners1, corners2]:
             for i in range(len(shape)):
-                # 计算边的法向量（轴）
+                # Calculate the normal vector (axis) of the edge
                 axis = np.array([shape[(i+1)%4][1] - shape[i][1], shape[i][0] - shape[(i+1)%4][0]])
                 axis = axis / np.linalg.norm(axis)
 
-                # 计算两个形状在轴上的投影
+                # Calculate projections of both shapes onto the axis
                 proj1 = [np.dot(corner, axis) for corner in corners1]
                 proj2 = [np.dot(corner, axis) for corner in corners2]
 
-                # 检查投影是否重叠
+                # Check if projections overlap
                 if max(proj1) < min(proj2) or max(proj2) < min(proj1):
-                    return False  # 找到分离轴，无碰撞
-        return True  # 所有轴都重叠，发生碰撞
+                    return False  # Found a separating axis, no collision
+        return True  # All axes overlap, collision occurs
 
     def _get_vehicle_corners(self, vehicle):
         x, y = vehicle.position
