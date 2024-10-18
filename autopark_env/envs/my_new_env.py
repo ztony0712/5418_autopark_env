@@ -33,13 +33,13 @@ class MyNewEnv(gym.Env):
     def __init__(self):
         super(MyNewEnv, self).__init__()
         self.action_space = gym.spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float32)
-        # Update the upper limit of the observation space to the maximum of screen dimensions
         self.observation_space = Box(low=np.array([0, 0, 0, 0]), 
                              high=np.array([800, 600, 10, 2 * np.pi]), 
                              dtype=np.float32)
         self.state = None
         self.parking_lot = None
         self.vehicle = None
+        self.goal_heading = 0  # Initialize goal heading
 
         # Initialize pygame
         pygame.init()
@@ -84,6 +84,9 @@ class MyNewEnv(gym.Env):
 
         self.parking_lot.set_goal_position((goal_x, goal_y))
 
+        # Set the goal heading based on the goal position relative to the vehicle's current position
+        self.goal_heading = np.arctan2(goal_y - INITIAL_VEHICLE_Y, goal_x - INITIAL_VEHICLE_X)
+
     def _create_walls(self):
         wall_thickness = 10  # Wall thickness
 
@@ -108,13 +111,20 @@ class MyNewEnv(gym.Env):
         self._create_static_vehicles()
         self._create_walls()
 
-        self.state = np.array(self.vehicle.position, dtype=np.float32)
+        # Initialize the state to include vehicle position, velocity, and heading
+        self.state = np.array([
+            self.vehicle.position[0],  # x coordinate
+            self.vehicle.position[1],  # y coordinate
+            self.vehicle.velocity,       # vehicle speed
+            self.vehicle.heading         # vehicle heading
+        ], dtype=np.float32)
+        
         return self.state, {}
 
     def step(self, action):
         # Parse action
-        steering = action[0]*0.1  # Range [-0.1, 0.1]
-        acceleration = action[1]  # Range [-1, 1]
+        steering = action[0] * 0.1  # Range [-0.1, 0.1]
+        acceleration = action[1]     # Range [-1, 1]
 
         # Update vehicle state
         self.vehicle.action["steering"] = steering
@@ -134,19 +144,48 @@ class MyNewEnv(gym.Env):
         return self.state, reward, False, False, {}
 
     def _get_obs(self):
-        # Return observation state, e.g., vehicle position, velocity, heading, etc.
+        # Return observation state, including vehicle position, velocity, and heading
         return np.array([
-            *self.vehicle.position,
-            self.vehicle.velocity,
-            self.vehicle.heading,
-            self.vehicle.steering_angle
+            self.vehicle.position[0],  # x coordinate
+            self.vehicle.position[1],  # y coordinate
+            self.vehicle.velocity,       # vehicle speed
+            self.vehicle.heading         # vehicle heading
         ], dtype=np.float32)
 
     def _get_reward(self):
-        # Implement reward function
-        # This is just an example, you may need to adjust according to specific requirements
-        goal_distance = np.linalg.norm(self.vehicle.position - self.parking_lot.goal_position)
-        return -goal_distance  # The closer to the target, the higher the reward
+        # Calculate the current state s
+        s = np.array([
+            self.vehicle.position[0],  # x
+            self.vehicle.position[1],  # y
+            self.vehicle.velocity,       # v_x
+            0,                           # v_y, can be set as needed
+            np.cos(self.vehicle.heading),  # cos(ψ)
+            np.sin(self.vehicle.heading)   # sin(ψ)
+        ], dtype=np.float32)
+
+        # Goal state s_g
+        s_g = np.array([
+            self.parking_lot.goal_position[0],  # x_g
+            self.parking_lot.goal_position[1],  # y_g
+            0,                                   # target velocity v_x
+            0,                                   # target velocity v_y
+            np.cos(self.goal_heading),           # cos(ψ_g), target heading
+            np.sin(self.goal_heading)             # sin(ψ_g), target heading
+        ], dtype=np.float32)
+
+        # Calculate weighted p-norm
+        p = 2  # Set to the desired p value
+        W = np.array([1, 1, 1, 1, 1, 1])  # Weights can be adjusted as needed
+        norm = np.linalg.norm(W * (s - s_g), ord=p)
+
+        # Collision penalty
+        collision_penalty = 0
+        if self._check_collision():
+            collision_penalty = 1  # Penalty value when collision occurs, can be adjusted as needed
+
+        # Calculate total reward
+        reward = -norm - collision_penalty
+        return reward
 
     def _check_out_of_bounds(self):
         """
@@ -208,17 +247,17 @@ class MyNewEnv(gym.Env):
         """
         x, y = point
         
-        # 确保 x 和 y 是数字
+        # Ensure x and y are numbers
         if not (isinstance(x, (int, float)) and isinstance(y, (int, float))):
             return False
         
-        # 计算矩形的边界
+        # Calculate rectangle boundaries
         min_x = min(corner[0] for corner in rect_corners)
         max_x = max(corner[0] for corner in rect_corners)
         min_y = min(corner[1] for corner in rect_corners)
         max_y = max(corner[1] for corner in rect_corners)
         
-        # 检查点是否在矩形内
+        # Check if the point is inside the rectangle
         return min_x <= x <= max_x and min_y <= y <= max_y
 
     def render(self):
