@@ -205,13 +205,19 @@ class MyNewEnv(gym.Env):
         Check if a point is inside a rectangle defined by four corners
         """
         x, y = point
-        rect = pygame.Rect(
-            min(corner[0] for corner in rect_corners),
-            min(corner[1] for corner in rect_corners),
-            max(corner[0] for corner in rect_corners) - min(corner[0] for corner in rect_corners),
-            max(corner[1] for corner in rect_corners) - min(corner[1] for corner in rect_corners)
-        )
-        return rect.collidepoint(x, y)
+        
+        # 确保 x 和 y 是数字
+        if not (isinstance(x, (int, float)) and isinstance(y, (int, float))):
+            return False
+        
+        # 计算矩形的边界
+        min_x = min(corner[0] for corner in rect_corners)
+        max_x = max(corner[0] for corner in rect_corners)
+        min_y = min(corner[1] for corner in rect_corners)
+        max_y = max(corner[1] for corner in rect_corners)
+        
+        # 检查点是否在矩形内
+        return min_x <= x <= max_x and min_y <= y <= max_y
 
     def render(self):
         self.screen.fill((100, 100, 100))  # Gray background
