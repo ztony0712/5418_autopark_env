@@ -204,14 +204,33 @@ class MyNewEnv(gym.Env):
 
     def _check_collision(self):
         """
-        Check if the yellow car collides with stationary blue cars
+        使用分离轴定理检查黄色车辆是否与静止的蓝色车辆发生碰撞
         """
         vehicle_corners = self._get_vehicle_corners(self.vehicle)
         for static_vehicle in self.parking_lot.static_vehicles:
             static_vehicle_corners = self._get_vehicle_corners(static_vehicle)
-            if self._check_rect_collision(vehicle_corners, static_vehicle_corners):
+            if self._sat_collision(vehicle_corners, static_vehicle_corners):
                 return True
         return False
+
+    def _sat_collision(self, corners1, corners2):
+        """
+        使用分离轴定理检查两个凸多边形（由顶点定义）是否碰撞
+        """
+        for shape in [corners1, corners2]:
+            for i in range(len(shape)):
+                # 计算边的法向量（轴）
+                axis = np.array([shape[(i+1)%4][1] - shape[i][1], shape[i][0] - shape[(i+1)%4][0]])
+                axis = axis / np.linalg.norm(axis)
+
+                # 计算两个形状在轴上的投影
+                proj1 = [np.dot(corner, axis) for corner in corners1]
+                proj2 = [np.dot(corner, axis) for corner in corners2]
+
+                # 检查投影是否重叠
+                if max(proj1) < min(proj2) or max(proj2) < min(proj1):
+                    return False  # 找到分离轴，无碰撞
+        return True  # 所有轴都重叠，发生碰撞
 
     def _get_vehicle_corners(self, vehicle):
         x, y = vehicle.position
@@ -228,41 +247,6 @@ class MyNewEnv(gym.Env):
             np.array([x - half_width * cos_h - half_height * sin_h, y - half_width * sin_h + half_height * cos_h]),
         ]
         return corners
-
-    def _check_rect_collision(self, corners1, corners2):
-        """
-        Check if two rectangles (represented by four vertices) collide
-        """
-        for corner in corners1:
-            if self._point_in_rect(corner, corners2):
-                return True
-        for corner in corners2:
-            if self._point_in_rect(corner, corners1):
-                return True
-        return False
-
-    def _point_in_rect(self, point, rect_corners):
-        """
-        Check if a point is inside a rectangle defined by four corners
-        """
-        x, y = point
-        
-        # Ensure x and y are numbers
-        if not (isinstance(x, (int, float)) and isinstance(y, (int, float))):
-            return False
-        
-        def sign(p1, p2, p3):
-            return (p1[0] - p3[0]) * (p2[1] - p3[1]) - (p2[0] - p3[0]) * (p1[1] - p3[1])
-        
-        d1 = sign(point, rect_corners[0], rect_corners[1])
-        d2 = sign(point, rect_corners[1], rect_corners[2])
-        d3 = sign(point, rect_corners[2], rect_corners[3])
-        d4 = sign(point, rect_corners[3], rect_corners[0])
-
-        has_neg = (d1 < 0) or (d2 < 0) or (d3 < 0) or (d4 < 0)
-        has_pos = (d1 > 0) or (d2 > 0) or (d3 > 0) or (d4 > 0)
-
-        return not (has_neg and has_pos)
 
     def render(self):
         self.screen.fill((100, 100, 100))  # Gray background
