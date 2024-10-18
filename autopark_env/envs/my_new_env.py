@@ -1,6 +1,6 @@
 import numpy as np
 from gymnasium import Env
-from gymnasium.spaces import Discrete, Box
+from gymnasium.spaces import Box
 import pygame
 import random
 import gymnasium as gym
