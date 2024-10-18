@@ -33,9 +33,11 @@ class MyNewEnv(gym.Env):
     def __init__(self):
         super(MyNewEnv, self).__init__()
         self.action_space = gym.spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float32)
-        self.observation_space = Box(low=np.array([0, 0, 0, 0]), 
-                             high=np.array([800, 600, 10, 2 * np.pi]), 
-                             dtype=np.float32)
+        self.observation_space = Box(
+            low=np.array([0, 0, 0, 0], dtype=np.float32),
+            high=np.array([800, 600, 10, 2 * np.pi], dtype=np.float32),
+            dtype=np.float32
+        )
         self.state = None
         self.parking_lot = None
         self.vehicle = None
