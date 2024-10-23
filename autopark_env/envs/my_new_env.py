@@ -20,25 +20,42 @@ LANE_HEIGHT = 100
 VEHICLE_WIDTH = 40
 VEHICLE_HEIGHT = 20
 GOAL_SIZE = 25
-STATIC_VEHICLE_PROBABILITY = 0.3
-SAFE_DISTANCE = 20  # Safety threshold for distance to obstacles
+STATIC_VEHICLE_PROBABILITY = 0
+SAFE_DISTANCE = 30  # Safety threshold for distance to obstacles
 
 # Additional global parameters
 INITIAL_VEHICLE_X = (SCREEN_WIDTH - NUM_COLS * LANE_WIDTH) // 2 - 30
 INITIAL_VEHICLE_Y = 50
 STEERING_ANGLE = 0.1  # Steering angle
 STEP_REWARD = -0.1  # Reward per step
-FPS = 30
+FPS = 1
+
+MAX_STEERING_ANGLE = np.pi / 4  # 最大转向角 45 度
+MAX_ACCELERATION = 1.0          # 最大加速度
 
 class MyNewEnv(gym.Env):
     def __init__(self):
         super(MyNewEnv, self).__init__()
         self.action_space = gym.spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float32)
-        self.observation_space = Box(
-            low=np.array([0, 0, 0, 0, 0, 0], dtype=np.float32),  # Increase dimensions
-            high=np.array([800, 600, 10, 2 * np.pi, 800, 600], dtype=np.float32),  # Update upper bounds
-            dtype=np.float32
-        )
+        
+        # 修改observation_space的定义
+        self.observation_space = gym.spaces.Dict({
+            'observation': gym.spaces.Box(
+                low=np.array([0, 0, -10, -10, -1, -1], dtype=np.float32),  # x, y, vx, vy, cos_h, sin_h
+                high=np.array([800, 600, 10, 10, 1, 1], dtype=np.float32),
+                dtype=np.float32
+            ),
+            'achieved_goal': gym.spaces.Box(  # 当前位置和朝向
+                low=np.array([0, 0, -10, -10, -1, -1], dtype=np.float32),
+                high=np.array([800, 600, 10, 10, 1, 1], dtype=np.float32),
+                dtype=np.float32
+            ),
+            'desired_goal': gym.spaces.Box(   # 目标位置和朝向
+                low=np.array([0, 0, -10, -10, -1, -1], dtype=np.float32),
+                high=np.array([800, 600, 10, 10, 1, 1], dtype=np.float32),
+                dtype=np.float32
+            )
+        })
         self.state = None
         self.parking_lot = None
         self.vehicle = None
@@ -49,6 +66,15 @@ class MyNewEnv(gym.Env):
         self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
         pygame.display.set_caption("Parking Lot Visualization")
         self.clock = pygame.time.Clock()
+
+        # 添加步数计数器
+        self.step_count = 0
+
+        # 添加碰撞统计
+        self.episode_count = 0
+        self.collision_penalty = 5    # 进一步降低碰撞惩罚
+        self.max_steps = 100           # 减少最大步数
+        self.safe_distance = 20        # 增加安全距离
 
     def _create_parking_lot(self):
         self.parking_lot = ParkingLot(SCREEN_WIDTH, SCREEN_HEIGHT)
@@ -107,64 +133,133 @@ class MyNewEnv(gym.Env):
         for wall in walls:
             self.parking_lot.add_obstacle(wall)
 
-    def reset(self):
+    def reset(self, seed=None, options=None):
+        # 设置随机种子
+        if seed is not None:
+            np.random.seed(seed)
+            random.seed(seed)
+        
+        # 重置步数计数器
+        self.step_count = 0
+        
+        # 原有的重置逻辑
         self._create_parking_lot()
         self._create_vehicle()
         self._create_goal()
         self._create_static_vehicles()
         self._create_walls()
 
-        # Initialize the state to include vehicle position, velocity, and heading
-        self.state = self._get_obs()  # Directly obtain the state
+        # 初始化状态
+        self.state = self._get_obs()
         
+        # 增加episode计数
+        self.episode_count += 1
+        
+        # 返回初始观察和空的info字典
         return self.state, {}
 
     def step(self, action):
-        # Parse action
-        steering = action[0] * 0.1  # Range [-0.1, 0.1]
-        acceleration = action[1]     # Range [-1, 1]
+        # 增加步数计数
+        self.step_count += 1
+        
+        # 解析动作
+        steering = action[0] * MAX_STEERING_ANGLE
+        acceleration = action[1] * MAX_ACCELERATION
 
-        # Update vehicle state
+        # 更新车辆状态
         self.vehicle.action["steering"] = steering
         self.vehicle.action["acceleration"] = acceleration
-        self.vehicle.step(1.0)  # Use FPS to calculate time step
+        self.vehicle.step(1/FPS)  # 使用 1.0 秒作为时间步长
 
-        # Check if the vehicle touches the border or collides
-        if self._check_out_of_bounds() or self._check_collision():
-            print("Vehicle out of bounds or collision detected, resetting environment.")
-            return self.reset()[0], -1, False, False, {}  # Return a negative reward and mark done=True
-
-        # Update state
+        # 获取新的状态
         self.state = self._get_obs()
-        reward = self._get_reward()
+        
+        # 计算加权p范数距离
+        achieved_state = self.state['achieved_goal']     # shape: (6,)
+        desired_state = self.state['desired_goal']       # shape: (6,)
 
-        return self.state, reward, False, False, {}
+        reward = self.compute_reward(achieved_state, desired_state, None)
+        
+        # 检查是否碰撞
+        collision = self._check_collision() or self._check_out_of_bounds()
+        if collision:
+            reward -= self.collision_penalty # 碰撞惩罚
+            terminated = True
+            truncated = False
+            info = {'is_success': False}
+            return self.state, reward, terminated, truncated, info
 
-    def choose_action(self, state):
-        # state contains all the state information as an array
-        nearest_obstacle_distance = state[4]  # Assuming this is the distance to the nearest obstacle
+        # 检查是否到达目标
+        success = self._is_success(self.state['achieved_goal'], self.state['desired_goal'])
+        if success:
+            terminated = True
+            truncated = False
+            info = {'is_success': True}
+            return self.state, reward, terminated, truncated, info
+        
+        # 检查是否超出最大步数
+        truncated = self.step_count >= self.max_steps
+        terminated = False
 
-        # Choose actions based on the distance to the obstacle
-        if nearest_obstacle_distance < SAFE_DISTANCE:  # SAFE_DISTANCE is a threshold
-            action = np.array([0.1, -1])  # Slow down and slightly steer
-        else:
-            action = np.array([0.1, 1])  # Normal acceleration
+        info = {'is_success': False}
+        
+        return self.state, reward, terminated, truncated, info
 
-        return action
+    # def choose_action(self, state):
+    #     # state contains all the state information as an array
+    #     nearest_obstacle_distance = state[4]  # Assuming this is the distance to the nearest obstacle
+
+    #     # Choose actions based on the distance to the obstacle
+    #     if nearest_obstacle_distance < SAFE_DISTANCE:  # SAFE_DISTANCE is a threshold
+    #         action = np.array([0.1, -1])  # Slow down and slightly steer
+    #     else:
+    #         action = np.array([0.1, 1])  # Normal acceleration
+
+    #     return action
 
     def _get_obs(self):
-        # Get the distance to the nearest obstacle and wall
-        nearest_obstacle_distance = self._get_nearest_obstacle_distance()
-        nearest_wall_distance = self._get_nearest_wall_distance()
+        # 获取当前车辆状态
+        current_pos = self.vehicle.position
+        current_heading = self.vehicle.heading
+        current_heading_vec = np.array([np.cos(current_heading), np.sin(current_heading)])
         
-        return np.array([
-            self.vehicle.position[0],  # x coordinate
-            self.vehicle.position[1],  # y coordinate
-            self.vehicle.velocity,       # vehicle speed
-            self.vehicle.heading,        # vehicle heading
-            nearest_obstacle_distance,    # Distance to the nearest obstacle
-            nearest_wall_distance         # Distance to the nearest wall
-        ], dtype=np.float32)
+        # 计算速度在x和y方向的分量
+        velocity = self.vehicle.velocity
+        vx = velocity * np.cos(current_heading)  # x方向速度分量
+        vy = velocity * np.sin(current_heading)  # y方向速度分量
+        
+        # 目标朝向的向量
+        goal_heading_vec = np.array([np.cos(self.goal_heading), np.sin(self.goal_heading)])
+        
+        # 目标速度（假设目标是静止的）
+        goal_vx, goal_vy = 0.0, 0.0
+        
+        return {
+            'observation': np.array([
+                current_pos[0],           # x coordinate
+                current_pos[1],           # y coordinate
+                vx,                       # velocity x component
+                vy,                       # velocity y component
+                current_heading_vec[0],   # heading cos
+                current_heading_vec[1],   # heading sin
+            ], dtype=np.float32),
+            'achieved_goal': np.array([
+                current_pos[0],           # x coordinate
+                current_pos[1],           # y coordinate
+                vx,                       # velocity x component
+                vy,                       # velocity y component
+                current_heading_vec[0],   # heading cos
+                current_heading_vec[1],   # heading sin
+            ], dtype=np.float32),
+            'desired_goal': np.array([
+                self.parking_lot.goal_position[0],  # goal x
+                self.parking_lot.goal_position[1],  # goal y
+                goal_vx,                           # goal velocity x (0)
+                goal_vy,                           # goal velocity y (0)
+                goal_heading_vec[0],               # goal heading cos
+                goal_heading_vec[1],               # goal heading sin
+            ], dtype=np.float32)
+        }
 
     def _get_nearest_obstacle_distance(self):
         """
@@ -193,41 +288,6 @@ class MyNewEnv(gym.Env):
             SCREEN_HEIGHT - vehicle_position[1]   # Distance to the bottom wall
         ]
         return min(distances)  # Return the minimum distance
-
-    def _get_reward(self):
-        # Calculate the current state s
-        s = np.array([
-            self.vehicle.position[0],  # x
-            self.vehicle.position[1],  # y
-            self.vehicle.velocity,       # v_x
-            0,                           # v_y, can be set as needed
-            np.cos(self.vehicle.heading),  # cos(ψ)
-            np.sin(self.vehicle.heading)   # sin(ψ)
-        ], dtype=np.float32)
-
-        # Goal state s_g
-        s_g = np.array([
-            self.parking_lot.goal_position[0],  # x_g
-            self.parking_lot.goal_position[1],  # y_g
-            0,                                   # target velocity v_x
-            0,                                   # target velocity v_y
-            np.cos(self.goal_heading),           # cos(ψ_g), target heading
-            np.sin(self.goal_heading)             # sin(ψ_g), target heading
-        ], dtype=np.float32)
-
-        # Calculate weighted p-norm
-        p = 2  # Set to the desired p value
-        W = np.array([1, 1, 1, 1, 1, 1])  # Weights can be adjusted as needed
-        norm = np.linalg.norm(W * (s - s_g), ord=p)
-
-        # Collision penalty
-        collision_penalty = 0
-        if self._check_collision():
-            collision_penalty = 1  # Penalty value when collision occurs, can be adjusted as needed
-
-        # Calculate total reward
-        reward = -norm - collision_penalty
-        return reward
 
     def _check_out_of_bounds(self):
         """
@@ -311,3 +371,49 @@ class MyNewEnv(gym.Env):
 
     def close(self):
         pygame.quit()
+
+    def _is_success(self, achieved_goal, desired_goal):
+        """
+        判断智能体是否成功到达目标。
+        参数:
+            achieved_goal: 实际达到的目标，形状为 (4,)
+            desired_goal: 期望的目标，形状为 (4,)
+        返回:
+            bool: 是否成功
+        """
+        # pos_distance = np.linalg.norm(achieved_goal[:2] - desired_goal[:2])
+        # heading_similarity = np.dot(achieved_goal[2:], desired_goal[2:])
+        # return pos_distance < GOAL_SIZE and heading_similarity > 0.95
+        return (
+            self.compute_reward(achieved_goal, desired_goal, {})
+            > -0.08  # 原来是-0.12，稍微放宽一些
+        )
+
+    def compute_reward(self, achieved_goal, desired_goal, info):
+        weights = np.array([1, 0.3, 0, 0, 0.02, 0.02])
+        
+        # 归一化处理
+        achieved_normalized = achieved_goal / np.array([800, 600, 10, 10, 1, 1])  # 注意速度项的归一化值改为10
+        desired_normalized = desired_goal / np.array([800, 600, 10, 10, 1, 1])
+        
+        distance = np.power(
+            np.dot(
+                np.abs(achieved_normalized - desired_normalized),
+                weights,
+            ),
+            0.5,
+        )
+        
+        # 将奖励限制在合理范围内
+        reward = -np.clip(distance, 0, 1)
+        
+        return reward
+
+
+
+
+
+
+
+
+
