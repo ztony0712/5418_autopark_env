@@ -24,14 +24,13 @@ STATIC_VEHICLE_PROBABILITY = 0
 SAFE_DISTANCE = 30  # Safety threshold for distance to obstacles
 
 # Additional global parameters
-INITIAL_VEHICLE_X = (SCREEN_WIDTH - NUM_COLS * LANE_WIDTH) // 2 - 30
-INITIAL_VEHICLE_Y = 50
+# INITIAL_VEHICLE_X = (SCREEN_WIDTH - NUM_COLS * LANE_WIDTH) // 2 - 30
+INITIAL_VEHICLE_X = 400
+INITIAL_VEHICLE_Y = 300
 STEERING_ANGLE = 0.1  # Steering angle
 STEP_REWARD = -0.1  # Reward per step
 FPS = 1
 
-MAX_STEERING_ANGLE = np.pi / 4  # 最大转向角 45 度
-MAX_ACCELERATION = 1.0          # 最大加速度
 
 class MyNewEnv(gym.Env):
     def __init__(self):
@@ -163,8 +162,8 @@ class MyNewEnv(gym.Env):
         self.step_count += 1
         
         # 解析动作
-        steering = action[0] * MAX_STEERING_ANGLE
-        acceleration = action[1] * MAX_ACCELERATION
+        steering = action[0]
+        acceleration = action[1]
 
         # 更新车辆状态
         self.vehicle.action["steering"] = steering
@@ -367,7 +366,7 @@ class MyNewEnv(gym.Env):
             VehicleGraphics.display(vehicle, self.screen)
 
         pygame.display.flip()
-        self.clock.tick(FPS)
+        self.clock.tick(30)
 
     def close(self):
         pygame.quit()
@@ -386,7 +385,7 @@ class MyNewEnv(gym.Env):
         # return pos_distance < GOAL_SIZE and heading_similarity > 0.95
         return (
             self.compute_reward(achieved_goal, desired_goal, {})
-            > -0.08  # 原来是-0.12，稍微放宽一些
+            > -0.12  # 原来是-0.12，稍微放宽一些
         )
 
     def compute_reward(self, achieved_goal, desired_goal, info):
@@ -408,6 +407,9 @@ class MyNewEnv(gym.Env):
         reward = -np.clip(distance, 0, 1)
         
         return reward
+
+
+
 
 
 

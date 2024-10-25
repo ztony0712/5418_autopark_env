@@ -3,10 +3,12 @@ from typing import Dict, List
 
 class Vehicle:
     LENGTH: float = 4.0
-    MAX_STEERING_ANGLE: float = np.pi / 4  # About 45 degrees, can be adjusted as needed
-    MAX_SPEED: float = 20.0
-    MIN_SPEED: float = -10.0  # Allow reverse
-    MAX_ACCELERATION: float = 1.0  # New: maximum acceleration
+    MAX_STEERING_ANGLE: float = np.pi / 10  # 约18*2度，可根据需要调整
+    MAX_STEERING_CHANGE: float = np.pi / 60  # 每步最大转向角变化，可根据需要调整
+    MAX_SPEED: float = 10.0
+    MIN_SPEED: float = -10.0  # 允许倒车
+    MAX_ACCELERATION: float = 0.5  # 最大加速度
+    REAR_AXLE_OFFSET: float = LENGTH / 4  # 后轴到车辆后部的距离
 
     def __init__(self, position: List[float], heading: float = 0, velocity: float = 0):
         self.position = np.array(position, dtype=np.float32)
@@ -19,41 +21,45 @@ class Vehicle:
         }
         
         self.crashed = False
-        self.steering_angle = 0
+        self.steering_angle = 0  # 初始化转向角
 
     def act(self, action: Dict[str, float]) -> None:
-        """Store an action to be executed"""
+        """存储一个动作，等待执行"""
         if action:
             self.action.update(action)
 
     def step(self, dt: float) -> None:
-        """Update vehicle state"""
+        """更新车辆状态"""
         self.clip_actions()
         
-        # Update steering angle and limit it
+        # 计算转向角的变化
+        steering_change = self.action["steering"] * self.MAX_STEERING_CHANGE
+        
+        # 更新转向角，并限制在最大转向角范围内
         self.steering_angle = np.clip(
-            self.action["steering"] * self.MAX_STEERING_ANGLE,
+            self.steering_angle + steering_change,
             -self.MAX_STEERING_ANGLE,
             self.MAX_STEERING_ANGLE
         )
         
-        # Update velocity
+        # 更新速度
         self.velocity += self.action["acceleration"] * dt
         self.velocity = np.clip(self.velocity, self.MIN_SPEED, self.MAX_SPEED)
         
-        # Update heading (bicycle model)
+        # 计算角速度（基于自行车模型）
         angular_velocity = self.velocity * np.tan(self.steering_angle) / self.LENGTH
+        
+        # 更新朝向
         self.heading += angular_velocity * dt
         
-        # Update position
-        v = self.velocity * np.array([np.cos(self.heading), np.sin(self.heading)])
-        self.position += v * dt
+        # 更新位置（基于当前速度和朝向）
+        self.position += self.velocity * dt * np.array([np.cos(self.heading), np.sin(self.heading)])
         
-        # Ensure heading angle is between -π and π
+        # 确保朝向角在 -π 到 π 之间
         self.heading = (self.heading + np.pi) % (2 * np.pi) - np.pi
 
     def clip_actions(self) -> None:
-        """Limit the range of actions"""
+        """限制动作范围"""
         if self.crashed:
             self.action["steering"] = 0
             self.action["acceleration"] = 0
@@ -61,7 +67,7 @@ class Vehicle:
         self.action["acceleration"] = np.clip(self.action["acceleration"], -1, 1) * self.MAX_ACCELERATION
 
     def get_state(self) -> Dict[str, float]:
-        """Return the current state of the vehicle"""
+        """返回车辆当前状态"""
         return {
             'position': self.position.tolist(),
             'heading': self.heading,
@@ -81,7 +87,7 @@ class StaticVehicle:
         self.heading = heading
 
     def get_state(self) -> Dict[str, float]:
-        """Return the current state of the static vehicle"""
+        """返回静态车辆当前状态"""
         return {
             'position': self.position.tolist(),
             'heading': self.heading,

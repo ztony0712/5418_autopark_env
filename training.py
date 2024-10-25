@@ -7,6 +7,7 @@ from tensorboard import program
 import threading
 import time
 import webbrowser
+from tqdm import trange
 
 LEARNING_STEPS = 5e4
 
@@ -28,19 +29,40 @@ tb_thread.start()
 time.sleep(3)
 
 # 创建环境和模型
-env = MyNewEnv()
+env = gym.make('my-new-env-v0')
 obs, info = env.reset()
 
 her_kwargs = dict(n_sampled_goal=4, goal_selection_strategy='future')
-model = SAC('MultiInputPolicy', env, replay_buffer_class=HerReplayBuffer,
-            replay_buffer_kwargs=her_kwargs, verbose=1, 
-            tensorboard_log="logs", 
-            buffer_size=int(1e6),
-            learning_rate=1e-3,
-            gamma=0.95, batch_size=1024, tau=0.05,
-            policy_kwargs=dict(net_arch=[512, 512, 512]))
+model = SAC(
+    'MultiInputPolicy', 
+    env, 
+    replay_buffer_class=HerReplayBuffer,
+    replay_buffer_kwargs=her_kwargs, 
+    verbose=1, 
+    tensorboard_log="logs", 
+    buffer_size=int(1e6),
+    learning_rate=1e-3,
+    gamma=0.95, 
+    batch_size=1024, 
+    tau=0.05,
+    policy_kwargs=dict(net_arch=[512, 512, 512]),
+    learning_starts=10000  # 确保这个值大于环境的最大时间步数
+)
     
 model.learn(int(LEARNING_STEPS))
+# 保存模型
+model.save("sac_autopark_model")  # 会自动添加.zip后缀，保存为 sac_autopark_model.zip
+
+N_EPISODES = 10  # @param {type: "integer"}
+
+env = gym.make('my-new-env-v0')
+for episode in trange(N_EPISODES, desc="Test episodes"):
+    obs, info = env.reset()
+    done = truncated = False
+    while not (done or truncated):
+        action, _ = model.predict(obs, deterministic=True)
+        obs, reward, done, truncated, info = env.step(action)
+        env.render()
 
 env.close()
 
