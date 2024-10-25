@@ -38,7 +38,8 @@ model = SAC('MultiInputPolicy', env, replay_buffer_class=HerReplayBuffer,
             buffer_size=int(1e6),
             learning_rate=1e-3,
             gamma=0.95, batch_size=1024, tau=0.05,
-            policy_kwargs=dict(net_arch=[512, 512, 512]))
+            policy_kwargs=dict(net_arch=[512, 512, 512]),
+            learning_starts=10000)
     
 model.learn(int(LEARNING_STEPS))
 

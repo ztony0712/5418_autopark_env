@@ -13,6 +13,7 @@ from .components.graphics import VehicleGraphics
 # Global parameters
 SCREEN_WIDTH = 800
 SCREEN_HEIGHT = 600
+MAX_SPEED = 15
 NUM_COLS = 10
 NUM_ROWS = 3
 LANE_WIDTH = 40
@@ -24,14 +25,12 @@ STATIC_VEHICLE_PROBABILITY = 0
 SAFE_DISTANCE = 30  # Safety threshold for distance to obstacles
 
 # Additional global parameters
-INITIAL_VEHICLE_X = (SCREEN_WIDTH - NUM_COLS * LANE_WIDTH) // 2 - 30
-INITIAL_VEHICLE_Y = 50
-STEERING_ANGLE = 0.1  # Steering angle
-STEP_REWARD = -0.1  # Reward per step
+# INITIAL_VEHICLE_X = (SCREEN_WIDTH - NUM_COLS * LANE_WIDTH) // 2 - 30
+INITIAL_VEHICLE_X = 400
+INITIAL_VEHICLE_Y = 300
+MAX_STEPS = 300
 FPS = 1
 
-MAX_STEERING_ANGLE = np.pi / 4  # 最大转向角 45 度
-MAX_ACCELERATION = 1.0          # 最大加速度
 
 class MyNewEnv(gym.Env):
     def __init__(self):
@@ -41,18 +40,18 @@ class MyNewEnv(gym.Env):
         # 修改observation_space的定义
         self.observation_space = gym.spaces.Dict({
             'observation': gym.spaces.Box(
-                low=np.array([0, 0, -10, -10, -1, -1], dtype=np.float32),  # x, y, vx, vy, cos_h, sin_h
-                high=np.array([800, 600, 10, 10, 1, 1], dtype=np.float32),
+                low=np.array([0, 0, -MAX_SPEED, -MAX_SPEED, -1, -1], dtype=np.float32),  # x, y, vx, vy, cos_h, sin_h
+                high=np.array([800, 600, MAX_SPEED, MAX_SPEED, 1, 1], dtype=np.float32),
                 dtype=np.float32
             ),
             'achieved_goal': gym.spaces.Box(  # 当前位置和朝向
-                low=np.array([0, 0, -10, -10, -1, -1], dtype=np.float32),
-                high=np.array([800, 600, 10, 10, 1, 1], dtype=np.float32),
+                low=np.array([0, 0, -MAX_SPEED, -MAX_SPEED, -1, -1], dtype=np.float32),
+                high=np.array([800, 600, MAX_SPEED, MAX_SPEED, 1, 1], dtype=np.float32),
                 dtype=np.float32
             ),
             'desired_goal': gym.spaces.Box(   # 目标位置和朝向
-                low=np.array([0, 0, -10, -10, -1, -1], dtype=np.float32),
-                high=np.array([800, 600, 10, 10, 1, 1], dtype=np.float32),
+                low=np.array([0, 0, -MAX_SPEED, -MAX_SPEED, -1, -1], dtype=np.float32),
+                high=np.array([800, 600, MAX_SPEED, MAX_SPEED, 1, 1], dtype=np.float32),
                 dtype=np.float32
             )
         })
@@ -73,8 +72,8 @@ class MyNewEnv(gym.Env):
         # 添加碰撞统计
         self.episode_count = 0
         self.collision_penalty = 5    # 进一步降低碰撞惩罚
-        self.max_steps = 100           # 减少最大步数
-        self.safe_distance = 20        # 增加安全距离
+        self.max_steps = MAX_STEPS   # 减少最大步数
+        self.safe_distance = SAFE_DISTANCE        # 增加安全距离
 
     def _create_parking_lot(self):
         self.parking_lot = ParkingLot(SCREEN_WIDTH, SCREEN_HEIGHT)
@@ -102,14 +101,17 @@ class MyNewEnv(gym.Env):
                     self.parking_lot.add_static_vehicle(static_vehicle)
 
     def _create_goal(self):
-        start_x = (SCREEN_WIDTH - NUM_COLS * LANE_WIDTH) // 2
-        start_y = (SCREEN_HEIGHT - NUM_ROWS * LANE_HEIGHT) // 2
+        # start_x = (SCREEN_WIDTH - NUM_COLS * LANE_WIDTH) // 2
+        # start_y = (SCREEN_HEIGHT - NUM_ROWS * LANE_HEIGHT) // 2
 
-        random_col = random.randint(0, NUM_COLS - 2)
-        random_row = random.randint(0, NUM_ROWS - 1)
+        # random_col = random.randint(0, NUM_COLS - 2)
+        # random_row = random.randint(0, NUM_ROWS - 1)
 
-        goal_x = (start_x + random_col * LANE_WIDTH + (LANE_WIDTH - GOAL_SIZE) // 2) + 5
-        goal_y = start_y + random_row * LANE_HEIGHT + LANE_HEIGHT // 4
+        # goal_x = (start_x + random_col * LANE_WIDTH + (LANE_WIDTH - GOAL_SIZE) // 2) + 5
+        # goal_y = start_y + random_row * LANE_HEIGHT + LANE_HEIGHT // 4
+
+        goal_x = 490
+        goal_y = 380
 
         self.parking_lot.set_goal_position((goal_x, goal_y))
 
@@ -163,8 +165,8 @@ class MyNewEnv(gym.Env):
         self.step_count += 1
         
         # 解析动作
-        steering = action[0] * MAX_STEERING_ANGLE
-        acceleration = action[1] * MAX_ACCELERATION
+        steering = action[0]
+        acceleration = action[1]
 
         # 更新车辆状态
         self.vehicle.action["steering"] = steering
@@ -178,7 +180,8 @@ class MyNewEnv(gym.Env):
         achieved_state = self.state['achieved_goal']     # shape: (6,)
         desired_state = self.state['desired_goal']       # shape: (6,)
 
-        reward = self.compute_reward(achieved_state, desired_state, None)
+        # 修改为使用 unwrapped 访问 compute_reward
+        reward = self.unwrapped.compute_reward(achieved_state, desired_state, None)
         
         # 检查是否碰撞
         collision = self._check_collision() or self._check_out_of_bounds()
@@ -367,7 +370,7 @@ class MyNewEnv(gym.Env):
             VehicleGraphics.display(vehicle, self.screen)
 
         pygame.display.flip()
-        self.clock.tick(FPS)
+        self.clock.tick(30)
 
     def close(self):
         pygame.quit()
@@ -386,7 +389,7 @@ class MyNewEnv(gym.Env):
         # return pos_distance < GOAL_SIZE and heading_similarity > 0.95
         return (
             self.compute_reward(achieved_goal, desired_goal, {})
-            > -0.08  # 原来是-0.12，稍微放宽一些
+            > -0.12  # 原来是-0.12，稍微放宽一些
         )
 
     def compute_reward(self, achieved_goal, desired_goal, info):
@@ -405,9 +408,13 @@ class MyNewEnv(gym.Env):
         )
         
         # 将奖励限制在合理范围内
-        reward = -np.clip(distance, 0, 1)
+        reward = -np.clip(distance, 0, 5)
         
         return reward
+
+
+
+
 
 
 
