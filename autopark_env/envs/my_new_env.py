@@ -41,7 +41,7 @@ class MyNewEnv(gym.Env):
         self.observation_space = gym.spaces.Dict({
             'observation': gym.spaces.Box(
                 low=np.array([0, 0, -MAX_SPEED, -MAX_SPEED, -1, -1], dtype=np.float32),  # x, y, vx, vy, cos_h, sin_h
-                high=np.array([801, 600, MAX_SPEED, MAX_SPEED, 1, 1], dtype=np.float32),
+                high=np.array([800, 600, MAX_SPEED, MAX_SPEED, 1, 1], dtype=np.float32),
                 dtype=np.float32
             ),
             'achieved_goal': gym.spaces.Box(  # 当前位置和朝向
