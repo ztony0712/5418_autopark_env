@@ -8,6 +8,7 @@ class Vehicle:
     MAX_SPEED: float = 10.0
     MIN_SPEED: float = -10.0  # 允许倒车
     MAX_ACCELERATION: float = 0.3  # 最大加速度
+    MAX_STEERING = 0.1  # 与环境中的缩放一致
 
     def __init__(self, position: List[float], heading: float = 0, velocity: float = 0):
         self.position = np.array(position, dtype=np.float32)
@@ -45,7 +46,7 @@ class Vehicle:
         self.velocity += self.action["acceleration"] * dt
         self.velocity = np.clip(self.velocity, self.MIN_SPEED, self.MAX_SPEED)
 
-        # 计算角速度（基于自行车模型）
+        # 计算角速度���基于自行车模型）
         # 确保使用正切函数计算角速度
         if np.cos(self.steering_angle) != 0:  # 防止除以零
             angular_velocity = (self.velocity / self.LENGTH) * np.tan(self.steering_angle)
@@ -67,8 +68,9 @@ class Vehicle:
         if self.crashed:
             self.action["steering"] = 0
             self.action["acceleration"] = 0
-        self.action["steering"] = np.clip(self.action["steering"], -1, 1)
-        self.action["acceleration"] = np.clip(self.action["acceleration"], -1, 1) * self.MAX_ACCELERATION
+        # 仅进行裁剪，不再缩放
+        self.action["steering"] = np.clip(self.action["steering"], -self.MAX_STEERING, self.MAX_STEERING)
+        self.action["acceleration"] = np.clip(self.action["acceleration"], -self.MAX_ACCELERATION, self.MAX_ACCELERATION)
 
     def get_state(self) -> Dict[str, float]:
         """返回车辆当前状态"""

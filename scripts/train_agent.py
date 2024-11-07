@@ -13,7 +13,7 @@ def main():
         print("No saved model found. Starting training from scratch.")
     
     # 开始训练
-    agent.train(num_episodes=30)  # 训练 30 个回合
+    agent.train(num_episodes=100)  # 训练 50000
     
     # 保存训练好的模型
     agent.save_model(path='saved_models/')

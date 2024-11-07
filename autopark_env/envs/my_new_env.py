@@ -163,30 +163,15 @@ class MyNewEnv(gym.Env):
         return self.state, {}
 
     def step(self, action):
-        # Parse action
-        steering = action[0] * 0.1  # Range [-0.1, 0.1]
-        acceleration = action[1] * 0.5  # Scale acceleration to a reasonable range
+        self.step_count += 1
+        # 缩放动作到预期范围
+        steering = action[0] * 0.1       # 将 [-1, 1] 缩放到 [-0.1, 0.1]
+        acceleration = action[1] * 0.3   # 将 [-1, 1] 缩放到 [-0.3, 0.3]
 
         # 更新车辆状态
         self.vehicle.action["steering"] = steering
         self.vehicle.action["acceleration"] = acceleration
-        self.vehicle.step(1.0 / FPS)  # Use FPS to calculate time step
-
-        # Check for goal reached
-        if self._check_goal_reached():
-            print("Goal reached!")
-            reward = 100  # Positive reward
-            done = True
-            self.state = self._get_obs()
-            return self.state, reward, done, False, {}
-
-        # Check if the vehicle touches the border or collides
-        if self._check_out_of_bounds() or self._check_collision():
-            print("Vehicle out of bounds or collision detected.")
-            reward = -10  # Negative reward
-            done = True
-            self.state = self._get_obs()
-            return self.state, reward, done, False, {}
+        self.vehicle.step(1.0 / FPS)
 
         # 获取新的状态
         self.state = self._get_obs()
@@ -208,7 +193,7 @@ class MyNewEnv(gym.Env):
             return self.state, reward, terminated, truncated, info
 
         # 检查是否到达目标
-        success = self._is_success(self.state['achieved_goal'], self.state['desired_goal'])
+        success = self.check_goal_reached(self.state['achieved_goal'], self.state['desired_goal'])
         if success:
             terminated = True
             truncated = False
@@ -390,7 +375,7 @@ class MyNewEnv(gym.Env):
     def close(self):
         pygame.quit()
 
-    def _is_success(self, achieved_goal, desired_goal):
+    def check_goal_reached(self, achieved_goal, desired_goal):
         """
         判断智能体是否成功到达目标。
         参数:

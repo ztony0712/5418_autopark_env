@@ -28,7 +28,7 @@ tb_thread.start()
 time.sleep(3)
 
 # 创建环境和模型
-env = MyNewEnv()
+env = gym.make('my-new-env-v0')
 obs, info = env.reset()
 
 her_kwargs = dict(n_sampled_goal=4, goal_selection_strategy='future')
