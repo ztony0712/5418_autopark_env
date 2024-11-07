@@ -1,0 +1,10 @@
+# Ignore Python cache files
+__pycache__/
+# Ignore Python bytecode files
+*.pyc
+
+# Ignore egg-info directories
+*.egg-info/
+
+# Ignore TensorBoard logs
+logs/
