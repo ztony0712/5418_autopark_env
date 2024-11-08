@@ -55,10 +55,29 @@ pip install git+https://github.com/ztony0712/5418_autopark_env
 ```
 
 ### 1. Test Parking Environment
-Run test_env.py script to check the environment
+Run test_env.py script to check the environment visualization.
 
 ```bash
 # Display the parking environment visualization
-python test_env.py
+python testing_scripts/test_env.py
 ```
 
+### 2. Agent Training Process
+Run train_agent.py script to train the agent.
+```bash
+# Train the agent
+python training_scripts/train_agent.py
+```
+
+Open another terminal and run Tensorboard to visualize the training process.
+```bash
+# Run Tensorboard
+tensorboard --logdir=runs
+```
+
+### 3. Test Agent Performance
+Run video_recording.py script to visualize the agent performance and produce videos.
+```bash
+# Visualize the agent
+python video_recording.py
+```
