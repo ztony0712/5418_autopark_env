@@ -1,2 +1,0 @@
-[gym.envs]
-my-new-env-v0 = autopark_env.envs.my_new_env:MyNewEnv

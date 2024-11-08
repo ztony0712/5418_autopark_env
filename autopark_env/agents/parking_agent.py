@@ -150,7 +150,7 @@ class ParkingAgent:
             # 更新最佳奖励并保存模型
             if episode_reward > self.best_reward:
                 self.best_reward = episode_reward
-                self.save_model(path='saved_models/best_model/')
+                self.save_model()
 
             # 衰减探索噪声
             self.exploration_noise = max(self.exploration_noise * self.exploration_noise_decay, 0.1)
@@ -211,7 +211,7 @@ class ParkingAgent:
         # 修改：返回三个值
         return current_Q.mean().item(), actor_loss.item(), critic_loss.item()
 
-    def save_model(self, path='saved_models/'):
+    def save_model(self, path='saved_models'):
         # 创建目录（包括所有必要的父目录）
         os.makedirs(path, exist_ok=True)
         
@@ -220,7 +220,7 @@ class ParkingAgent:
         torch.save(self.critic.state_dict(), f'{path}/critic.pth')
         print(f"Model saved to {path}")
 
-    def load_model(self, path='saved_models/'):
+    def load_model(self, path='saved_models'):
         self.actor.load_state_dict(torch.load(f'{path}/actor.pth', map_location=torch.device('cpu')))
         self.critic.load_state_dict(torch.load(f'{path}/critic.pth', map_location=torch.device('cpu')))
         print("Model loaded.")

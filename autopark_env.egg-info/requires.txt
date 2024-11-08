@@ -1,5 +1,0 @@
-gymnasium
-numpy
-pygame
-torch>=1.9.0
-matplotlib>=3.4.0
