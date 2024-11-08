@@ -6,7 +6,6 @@ from IPython import display as ipythondisplay
 import numpy as np
 from pyvirtualdisplay import Display
 import torch
-from tqdm import trange
 import gymnasium as gym
 
 from autopark_env.agents.parking_agent import ParkingAgent
@@ -50,14 +49,14 @@ agent.load_model(path='saved_models/')
 
 N_EPISODES = 10  # @param {type: "integer"}
 
-# 启用视频录制
+# Enable video recording
 env = record_videos(env)
 
 for episode in range(N_EPISODES):
     state, _ = env.reset()
     state = state['observation']
-    # 重置agent的环境
-    agent.env = env  # 确保agent使用相同的环境
+    # Reset the agent's environment
+    agent.env = env  # Ensure the agent uses the same environment
     episode_reward = 0
     done = truncated = False
     
@@ -68,13 +67,13 @@ for episode in range(N_EPISODES):
             action = agent.actor(state_tensor).cpu().numpy()[0]
         
         action = np.clip(action, env.action_space.low, env.action_space.high)
-        next_state, reward, terminated, truncated, _ = env.step(action)  # 使用主环境而不是agent.env
+        next_state, reward, terminated, truncated, _ = env.step(action)  # Use the main environment instead of agent.env
         done = terminated or truncated
         state = next_state['observation']
         episode_reward += reward
-        env.render()  # 在主环境上渲染
+        env.render()  # Render on the main environment
         
     print(f"Test Episode {episode + 1}: Reward = {episode_reward}")
 
 env.close()
-show_videos()  # 取消注释以显示视频
+show_videos()  # Uncomment to display videos

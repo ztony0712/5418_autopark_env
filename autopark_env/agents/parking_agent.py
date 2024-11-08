@@ -12,12 +12,12 @@ import os
 
 class ParkingAgent:
     def __init__(self, env_name='my-new-env-v0', learning_rate=0.001, gamma=0.99, max_timesteps=1000):
-        # 检查是否有可用的 GPU
+        # Check if a GPU is available
         # self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.device = torch.device("cpu")
         print(f"Using device: {self.device}")
 
-        # 初始化环境和参数
+        # Initialize environment and parameters
         self.env = gym.make(env_name)
         self.learning_rate = learning_rate
         self.gamma = gamma
@@ -27,12 +27,12 @@ class ParkingAgent:
         self.exploration_noise_decay = 0.999
         self.tau = 0.01
 
-        # 获取状态和动作维度
+        # Get state and action dimensions
         state_dim = self.env.observation_space['observation'].shape[0]
         action_dim = self.env.action_space.shape[0]
         max_action = float(self.env.action_space.high[0])
 
-        # 初始化网络并移至GPU
+        # Initialize networks and move to GPU
         self.actor = Actor(state_dim, action_dim, max_action).to(self.device)
         self.actor_target = Actor(state_dim, action_dim, max_action).to(self.device)
         self.actor_target.load_state_dict(self.actor.state_dict())
@@ -43,14 +43,14 @@ class ParkingAgent:
         self.critic_target.load_state_dict(self.critic.state_dict())
         self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), lr=1e-3)
 
-        # 初始化经验回放缓冲区
+        # Initialize experience replay buffer
         self.replay_buffer = ReplayBuffer(state_dim, action_dim)
 
-        # 初始化 Tensorboard
+        # Initialize Tensorboard
         current_time = datetime.now().strftime('%Y%m%d-%H%M%S')
         self.writer = SummaryWriter(f'runs/parking_agent_{current_time}')
         
-        # 用于跟踪训练进度的变量
+        # Variables for tracking training progress
         self.total_steps = 0
         self.best_reward = float('-inf')
 
@@ -68,23 +68,23 @@ class ParkingAgent:
             episode_actor_losses = []
             episode_critic_losses = []
             
-            # 获取初始距离
+            # Get initial distance
             initial_distance = np.linalg.norm(
                 state[:2] - self.env.unwrapped.parking_lot.goal_position
             )
 
             for t in range(self.max_timesteps):
-                # 将状态转换为tensor并移至GPU
+                # Convert state to tensor and move to GPU
                 state_tensor = torch.FloatTensor(state).unsqueeze(0).to(self.device)
                 
-                # 选择动作
+                # Select action
                 with torch.no_grad():
                     action = self.actor(state_tensor).cpu().numpy()[0]
                 noise = np.random.normal(0, self.exploration_noise, size=self.env.action_space.shape[0])
                 action = action + noise
                 action = np.clip(action, self.env.action_space.low, self.env.action_space.high)
 
-                # 执行动作
+                # Execute action
                 next_state_dict, reward, terminated, truncated, info = self.env.step(action)
                 done = terminated or truncated
                 next_state = next_state_dict['observation']
@@ -92,10 +92,10 @@ class ParkingAgent:
                 episode_steps += 1
                 self.total_steps += 1
 
-                # 存储经验
+                # Store experience
                 self.replay_buffer.add(state, action, reward, next_state, float(done))
 
-                # 更新络
+                # Update networks
                 if self.replay_buffer.size > self.batch_size:
                     q_value, actor_loss, critic_loss = self.update_network()
                     episode_q_values.append(q_value)
@@ -104,7 +104,7 @@ class ParkingAgent:
 
                 state = next_state
                 if done:
-                    # 检查是否成功到达目标
+                    # Check if goal is reached
                     # if self.env.check_goal_reached(
                     #     next_state_dict['achieved_goal'], 
                     #     next_state_dict['desired_goal']
@@ -120,24 +120,24 @@ class ParkingAgent:
                     break
 
 
-            # 计算当前距离
+            # Calculate current distance
             final_distance = np.linalg.norm(
                 state[:2] - self.env.unwrapped.parking_lot.goal_position
             )
 
-            # 记录训练指标
+            # Log training metrics
             self.writer.add_scalar('Training/Episode Reward', episode_reward, episode)
             self.writer.add_scalar('Training/Episode Length', episode_steps, episode)
             self.writer.add_scalar('Training/Exploration Noise', self.exploration_noise, episode)
             
-            # 新增的指标
+            # New metrics
             if episode_critic_losses:
                 avg_critic_loss = sum(episode_critic_losses) / len(episode_critic_losses)
                 self.writer.add_scalar('Training/Critic Loss', avg_critic_loss, episode)
             
             self.writer.add_scalar('Training/Distance to Goal', final_distance, episode)
             
-            # 计算并记录成功率
+            # Calculate and log success rate
             success_rate = success_count / (episode + 1)
             self.writer.add_scalar('Training/Success Rate', success_rate, episode)
             
@@ -147,16 +147,16 @@ class ParkingAgent:
                 self.writer.add_scalar('Training/Average Q Value', avg_q_value, episode)
                 self.writer.add_scalar('Training/Actor Loss', avg_actor_loss, episode)
 
-            # 更新最佳奖励并保存模型
+            # Update best reward and save model
             if episode_reward > self.best_reward:
                 self.best_reward = episode_reward
                 self.save_model()
 
-            # 衰减探索噪声
+            # Decay exploration noise
             self.exploration_noise = max(self.exploration_noise * self.exploration_noise_decay, 0.1)
             episode_rewards.append(episode_reward)
 
-            # 每10个episode打印一次进度
+            # Print progress every 10 episodes
             if (episode + 1) % 10 == 0:
                 avg_reward = sum(episode_rewards[-10:]) / 10
                 elapsed_time = time.time() - start_time
@@ -169,10 +169,10 @@ class ParkingAgent:
         self.writer.close()
 
     def update_network(self):
-        # 从经验回放缓冲区采样
+        # Sample from experience replay buffer
         state, action, reward, next_state, done = self.replay_buffer.sample(self.batch_size)
         
-        # 转换为tensor并移至GPU
+        # Convert to tensor and move to GPU
         state = torch.FloatTensor(state).to(self.device)
         action = torch.FloatTensor(action).to(self.device)
         reward = torch.FloatTensor(reward).to(self.device)
@@ -188,7 +188,7 @@ class ParkingAgent:
         current_Q = self.critic(state, action)
         critic_loss = F.mse_loss(current_Q, target_Q)
 
-        # 更新 Critic
+        # Update Critic
         self.critic_optimizer.zero_grad()
         critic_loss.backward()
         self.critic_optimizer.step()
@@ -196,26 +196,26 @@ class ParkingAgent:
         # Actor loss
         actor_loss = -self.critic(state, self.actor(state)).mean()
 
-        # 更新 Actor
+        # Update Actor
         self.actor_optimizer.zero_grad()
         actor_loss.backward()
         self.actor_optimizer.step()
 
-        # 更新目标网络
+        # Update target networks
         for param, target_param in zip(self.critic.parameters(), self.critic_target.parameters()):
             target_param.data.copy_(self.tau * param.data + (1 - self.tau) * target_param.data)
 
         for param, target_param in zip(self.actor.parameters(), self.actor_target.parameters()):
             target_param.data.copy_(self.tau * param.data + (1 - self.tau) * target_param.data)
 
-        # 修改：返回三个值
+        # Modify: return three values
         return current_Q.mean().item(), actor_loss.item(), critic_loss.item()
 
     def save_model(self, path='saved_models'):
-        # 创建目录（包括所有必要的父目录）
+        # Create directory (including all necessary parent directories)
         os.makedirs(path, exist_ok=True)
         
-        # 保存模型
+        # Save model
         torch.save(self.actor.state_dict(), f'{path}/actor.pth')
         torch.save(self.critic.state_dict(), f'{path}/critic.pth')
         print(f"Model saved to {path}")
@@ -226,22 +226,24 @@ class ParkingAgent:
         print("Model loaded.")
 
     def test(self, num_episodes=10):
-        self.actor.eval()  # 设置为评估模式
+        # Set to evaluation mode
+        self.actor.eval()  
         
         for episode in range(num_episodes):
+            # Reset environment
             state, _ = self.env.reset()
             state = state['observation']
             episode_reward = 0
             done = False
             
             while not done:
-                # 将状态转换为tensor并移至GPU
+                # Convert state to tensor and move to GPU
                 state_tensor = torch.FloatTensor(state).unsqueeze(0).to(self.device)
                 
                 with torch.no_grad():
                     action = self.actor(state_tensor).cpu().numpy()[0]
                 
-                # 动作裁剪
+                # Action clipping
                 action = np.clip(action, self.env.action_space.low, self.env.action_space.high)
                 next_state, reward, terminated, truncated, _ = self.env.step(action)
                 done = terminated or truncated
@@ -251,4 +253,5 @@ class ParkingAgent:
                 
             print(f"Test Episode {episode + 1}: Reward = {episode_reward}")
         
-        self.actor.train()  # 恢复训练模式
+        # Restore training mode
+        self.actor.train()  

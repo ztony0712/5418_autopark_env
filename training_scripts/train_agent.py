@@ -3,24 +3,24 @@ import os
 from autopark_env.agents.parking_agent import ParkingAgent
 
 def main():
-    # 实例化 ParkingAgent
+    # Instantiate ParkingAgent
     agent = ParkingAgent(env_name='my-new-env-v0')
     
-    # 检查模型文件是否存在，如果存在则加载模型
+    # Check if model files exist, if so, load the model
     if os.path.exists('saved_models/actor.pth') and os.path.exists('saved_models/critic.pth'):
         agent.load_model(path='saved_models/')
     else:
         print("No saved model found. Starting training from scratch.")
     
-    # 开始训练
-    agent.train(num_episodes=100)  # 训练 50000
+    # Start training
+    agent.train(num_episodes=100)  # Train for 100 episodes
     
-    # 保存训练好的模型
+    # Save the trained model
     agent.save_model(path='saved_models/')
     
-    # 测试训练好的模型
+    # Test the trained model
     print("Starting testing...")
-    agent.test(num_episodes=5)  # 测试 5 个回合
+    agent.test(num_episodes=5)  # Test for 5 episodes
 
 if __name__ == "__main__":
     main()
