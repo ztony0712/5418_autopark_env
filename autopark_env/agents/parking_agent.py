@@ -104,12 +104,20 @@ class ParkingAgent:
                 state = next_state
                 if done:
                     # 检查是否成功到达目标
-                    if self.env.check_goal_reached(
+                    # if self.env.check_goal_reached(
+                    #     next_state_dict['achieved_goal'], 
+                    #     next_state_dict['desired_goal']
+                    # ):
+                    #     success_count += 1
+                    # break
+                
+                    if self.env.unwrapped.check_goal_reached(
                         next_state_dict['achieved_goal'], 
                         next_state_dict['desired_goal']
                     ):
                         success_count += 1
                     break
+
 
             # 计算当前距离
             final_distance = np.linalg.norm(
@@ -212,8 +220,8 @@ class ParkingAgent:
         print(f"Model saved to {path}")
 
     def load_model(self, path='saved_models/'):
-        self.actor.load_state_dict(torch.load(f'{path}/actor.pth', weights_only=True))
-        self.critic.load_state_dict(torch.load(f'{path}/critic.pth', weights_only=True))
+        self.actor.load_state_dict(torch.load(f'{path}/actor.pth', map_location=torch.device('cpu')))
+        self.critic.load_state_dict(torch.load(f'{path}/critic.pth', map_location=torch.device('cpu')))
         print("Model loaded.")
 
     def test(self, num_episodes=10):
