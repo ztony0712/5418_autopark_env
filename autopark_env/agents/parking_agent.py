@@ -13,7 +13,8 @@ import os
 class ParkingAgent:
     def __init__(self, env_name='my-new-env-v0', learning_rate=0.001, gamma=0.99, max_timesteps=1000):
         # 检查是否有可用的 GPU
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        # self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.device = torch.device("cpu")
         print(f"Using device: {self.device}")
 
         # 初始化环境和参数

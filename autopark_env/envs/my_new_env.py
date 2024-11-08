@@ -4,6 +4,7 @@ from gymnasium.spaces import Box
 import pygame
 import random
 import gymnasium as gym
+from gymnasium.wrappers import RecordVideo
 
 from .components.parking_lot import ParkingLot
 from .components.vehicle import StaticVehicle, Vehicle
@@ -33,8 +34,13 @@ FPS = 1
 
 
 class MyNewEnv(gym.Env):
-    def __init__(self):
+    def __init__(self, render_mode=None):
         super(MyNewEnv, self).__init__()
+        self.render_mode = render_mode
+        self.metadata = {
+            "render_modes": ["human", "rgb_array"],
+            "render_fps": 30,
+        }
         self.action_space = gym.spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float32)
         
         # 修改observation_space的定义
@@ -74,6 +80,11 @@ class MyNewEnv(gym.Env):
         self.collision_penalty = 5    # 进一步降低碰撞惩罚
         self.max_steps = MAX_STEPS   # 减少最大步数
         self.safe_distance = SAFE_DISTANCE        # 增加安全距离
+
+    @property
+    def render_modes(self):
+        """实现render_modes属性"""
+        return self.metadata["render_modes"]
 
     def _create_parking_lot(self):
         self.parking_lot = ParkingLot(SCREEN_WIDTH, SCREEN_HEIGHT)
@@ -354,23 +365,40 @@ class MyNewEnv(gym.Env):
         return corners
 
     def render(self):
+        if self.render_mode is None:
+            return
+
         self.screen.fill((100, 100, 100))  # Gray background
 
         VehicleGraphics.draw_walls(self.screen, self.parking_lot.obstacles)
-
         VehicleGraphics.draw_parking_lanes(self.screen, LANE_WIDTH, LANE_HEIGHT, NUM_ROWS, NUM_COLS, SCREEN_WIDTH, SCREEN_HEIGHT)
 
         if self.parking_lot.goal_position:
             VehicleGraphics.draw_goal(self.screen, self.parking_lot.goal_position[0], self.parking_lot.goal_position[1])
 
         for static_vehicle in self.parking_lot.static_vehicles:
-            VehicleGraphics.display(static_vehicle, self.screen, color=(0, 0, 255))  # Blue stationary vehicles
+            VehicleGraphics.display(static_vehicle, self.screen, color=(0, 0, 255))
 
         for vehicle in self.parking_lot.vehicles:
             VehicleGraphics.display(vehicle, self.screen)
 
-        pygame.display.flip()
-        self.clock.tick(30)
+        if self.render_mode == "human":
+            pygame.display.flip()
+            self.clock.tick(30)
+        elif self.render_mode == "rgb_array":
+            return pygame.surfarray.array3d(self.screen).transpose((1, 0, 2))
+        
+    def update_metadata(self, video_real_time_ratio=2):
+        frames_freq = (
+            30
+            if self._record_video_wrapper
+            else 30
+        )
+        self.metadata["render_fps"] = video_real_time_ratio * frames_freq
+        
+    def set_record_video_wrapper(self, wrapper: RecordVideo):
+        self._record_video_wrapper = wrapper
+        self.update_metadata()
 
     def close(self):
         pygame.quit()
