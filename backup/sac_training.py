@@ -8,7 +8,7 @@ import threading
 import time
 import webbrowser
 
-LEARNING_STEPS = 5e4
+LEARNING_STEPS = 2.3e4
 
 # 启动 TensorBoard 在后台运行
 def start_tensorboard():
@@ -42,6 +42,7 @@ model = SAC('MultiInputPolicy', env, replay_buffer_class=HerReplayBuffer,
             learning_starts=10000)
     
 model.learn(int(LEARNING_STEPS))
+model.save("models/sac_parking_final")
 
 env.close()
 

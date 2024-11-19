@@ -4,11 +4,11 @@ from typing import Dict, List
 class Vehicle:
     LENGTH: float = 4.0
     MAX_STEERING_ANGLE: float = np.pi / 20  # About 18*2 degrees, adjustable as needed
-    MAX_STEERING_CHANGE: float = np.pi / 60  # Maximum steering angle change per step, adjustable as needed
+    MAX_STEERING_CHANGE: float = np.pi / 40  # Maximum steering angle change per step, adjustable as needed
     MAX_SPEED: float = 10.0
     MIN_SPEED: float = -10.0  # Allow reverse
     MAX_ACCELERATION: float = 0.3  # Maximum acceleration
-    MAX_STEERING = 0.1  # Consistent with the scaling in the environment
+    MAX_STEERING = 0.5  # Consistent with the scaling in the environment
 
     def __init__(self, position: List[float], heading: float = 0, velocity: float = 0):
         self.position = np.array(position, dtype=np.float32)

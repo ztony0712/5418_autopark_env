@@ -29,7 +29,7 @@ SAFE_DISTANCE = 30  # Safety threshold for distance to obstacles
 # INITIAL_VEHICLE_X = (SCREEN_WIDTH - NUM_COLS * LANE_WIDTH) // 2 - 30
 INITIAL_VEHICLE_X = 400
 INITIAL_VEHICLE_Y = 300
-MAX_STEPS = 300
+MAX_STEPS = 200
 FPS = 1
 
 
@@ -46,18 +46,18 @@ class MyNewEnv(gym.Env):
         # Modify the definition of observation_space
         self.observation_space = gym.spaces.Dict({
             'observation': gym.spaces.Box(
-                low=np.array([0, 0, -MAX_SPEED, -MAX_SPEED, -1, -1], dtype=np.float32),  # x, y, vx, vy, cos_h, sin_h
-                high=np.array([800, 600, MAX_SPEED, MAX_SPEED, 1, 1], dtype=np.float32),
+                low=np.array([0, 0, -1, -1, -1, -1], dtype=np.float32),  # x, y, vx, vy, cos_h, sin_h
+                high=np.array([1, 1, 1, 1, 1, 1], dtype=np.float32),
                 dtype=np.float32
             ),
-            'achieved_goal': gym.spaces.Box(  # Current position and heading
-                low=np.array([0, 0, -MAX_SPEED, -MAX_SPEED, -1, -1], dtype=np.float32),
-                high=np.array([800, 600, MAX_SPEED, MAX_SPEED, 1, 1], dtype=np.float32),
+            'achieved_goal': gym.spaces.Box(
+                low=np.array([0, 0, -1, -1, -1, -1], dtype=np.float32),
+                high=np.array([1, 1, 1, 1, 1, 1], dtype=np.float32),
                 dtype=np.float32
             ),
-            'desired_goal': gym.spaces.Box(   # Target position and heading
-                low=np.array([0, 0, -MAX_SPEED, -MAX_SPEED, -1, -1], dtype=np.float32),
-                high=np.array([800, 600, MAX_SPEED, MAX_SPEED, 1, 1], dtype=np.float32),
+            'desired_goal': gym.spaces.Box(
+                low=np.array([0, 0, -1, -1, -1, -1], dtype=np.float32),
+                high=np.array([1, 1, 1, 1, 1, 1], dtype=np.float32),
                 dtype=np.float32
             )
         })
@@ -77,9 +77,9 @@ class MyNewEnv(gym.Env):
 
         # Add collision statistics
         self.episode_count = 0
-        self.collision_penalty = 5    # Further reduce collision penalty
-        self.max_steps = MAX_STEPS   # Reduce maximum steps
-        self.safe_distance = SAFE_DISTANCE        # Increase safe distance
+        self.collision_penalty = 10
+        self.max_steps = MAX_STEPS
+        self.safe_distance = SAFE_DISTANCE
 
     @property
     def render_modes(self):
@@ -175,15 +175,18 @@ class MyNewEnv(gym.Env):
 
     def step(self, action):
         self.step_count += 1
-        # Scale action to expected range
-        steering = action[0] * 0.1       # Scale [-1, 1] to [-0.1, 0.1]
-        acceleration = action[1] * 0.3   # Scale [-1, 1] to [-0.3, 0.3]
-
-        # Update vehicle state
+        # 确保动作在 [-1, 1] 范围内
+        action = np.clip(action, -1, 1)
+        
+        # 将动作映射到车辆模型的有效范围
+        steering = action[0] * Vehicle.MAX_STEERING_ANGLE   # 将 [-1, 1] 映射到 [-MAX_STEERING_ANGLE, MAX_STEERING_ANGLE]
+        acceleration = action[1] * Vehicle.MAX_ACCELERATION # 将 [-1, 1] 映射到 [-MAX_ACCELERATION, MAX_ACCELERATION]
+        
+        # 更新车辆状态
         self.vehicle.action["steering"] = steering
         self.vehicle.action["acceleration"] = acceleration
         self.vehicle.step(1.0 / FPS)
-
+        
         # Get new state
         self.state = self._get_obs()
         
@@ -194,6 +197,10 @@ class MyNewEnv(gym.Env):
         # Modify to use unwrapped access to compute_reward
         reward = self.unwrapped.compute_reward(achieved_state, desired_state, None)
         
+        # Calculate action penalty to discourage spinning in place
+        # action_penalty = 0.1 * (steering ** 2 + acceleration ** 2)
+        # reward -= action_penalty
+
         # Check for collision
         collision = self._check_collision() or self._check_out_of_bounds()
         if collision:
@@ -215,7 +222,7 @@ class MyNewEnv(gym.Env):
         truncated = self.step_count >= self.max_steps
         terminated = False
 
-        info = {'is_success': False}
+        info = {'is_success': success}
         
         return self.state, reward, terminated, truncated, info
 
@@ -237,7 +244,7 @@ class MyNewEnv(gym.Env):
         current_heading = self.vehicle.heading
         current_heading_vec = np.array([np.cos(current_heading), np.sin(current_heading)])
         
-        # Calculate velocity components in x and y directions
+        # Calculate velocity components
         velocity = self.vehicle.velocity
         vx = velocity * np.cos(current_heading)  # x direction velocity component
         vy = velocity * np.sin(current_heading)  # y direction velocity component
@@ -245,34 +252,28 @@ class MyNewEnv(gym.Env):
         # Goal heading vector
         goal_heading_vec = np.array([np.cos(self.goal_heading), np.sin(self.goal_heading)])
         
-        # Goal velocity (assuming the goal is stationary)
-        goal_vx, goal_vy = 0.0, 0.0
+        # 统一归一化处理
+        normalized_pos = np.array(current_pos) / np.array([SCREEN_WIDTH, SCREEN_HEIGHT])
+        normalized_goal_pos = np.array(self.parking_lot.goal_position) / np.array([SCREEN_WIDTH, SCREEN_HEIGHT])
+        normalized_vx = vx / MAX_SPEED
+        normalized_vy = vy / MAX_SPEED
         
         return {
-            'observation': np.array([
-                current_pos[0],           # x coordinate
-                current_pos[1],           # y coordinate
-                vx,                       # velocity x component
-                vy,                       # velocity y component
-                current_heading_vec[0],   # heading cos
-                current_heading_vec[1],   # heading sin
-            ], dtype=np.float32),
-            'achieved_goal': np.array([
-                current_pos[0],           # x coordinate
-                current_pos[1],           # y coordinate
-                vx,                       # velocity x component
-                vy,                       # velocity y component
-                current_heading_vec[0],   # heading cos
-                current_heading_vec[1],   # heading sin
-            ], dtype=np.float32),
-            'desired_goal': np.array([
-                self.parking_lot.goal_position[0],  # goal x
-                self.parking_lot.goal_position[1],  # goal y
-                goal_vx,                           # goal velocity x (0)
-                goal_vy,                           # goal velocity y (0)
-                goal_heading_vec[0],               # goal heading cos
-                goal_heading_vec[1],               # goal heading sin
-            ], dtype=np.float32)
+            'observation': np.concatenate([
+                normalized_pos,
+                [normalized_vx, normalized_vy],
+                current_heading_vec
+            ]).astype(np.float32),
+            'achieved_goal': np.concatenate([
+                normalized_pos,
+                [normalized_vx, normalized_vy],
+                current_heading_vec
+            ]).astype(np.float32),
+            'desired_goal': np.concatenate([
+                normalized_goal_pos,
+                [0.0, 0.0],
+                goal_heading_vec
+            ]).astype(np.float32)
         }
 
     def _get_nearest_obstacle_distance(self):
@@ -416,39 +417,41 @@ class MyNewEnv(gym.Env):
         # heading_similarity = np.dot(achieved_goal[2:], desired_goal[2:])
         # return pos_distance < GOAL_SIZE and heading_similarity > 0.95
         return (
-            self.compute_reward(achieved_goal, desired_goal, {})
-            > -0.12  # Originally -0.12, slightly relaxed
+            self.unwrapped.compute_reward(achieved_goal, desired_goal, {})
+            > -0.003  # Originally -0.12, slightly relaxed
         )
 
     def compute_reward(self, achieved_goal, desired_goal, info):
+        """计算奖励值
+        Args:
+            achieved_goal: 已经归一化的目标 [x, y, vx, vy, cos_h, sin_h]
+            desired_goal: 已经归一化的期望目标
+        """
+        # 直接使用已经归一化的值，不需要再次归一化
         weights = np.array([1, 0.3, 0, 0, 0.02, 0.02])
         
-        # Normalization
-        achieved_normalized = achieved_goal / np.array([800, 600, 10, 10, 1, 1])  # Note: normalization value for speed changed to 10
-        desired_normalized = desired_goal / np.array([800, 600, 10, 10, 1, 1])
-        
-        distance = np.power(
-            np.dot(
-                np.abs(achieved_normalized - desired_normalized),
-                weights,
-            ),
-            0.5,
-        )
+        # 处理批处理情况
+        if achieved_goal.ndim == 2:
+            distance = np.power(
+                np.sum(
+                    np.abs(achieved_goal - desired_goal) * weights,
+                    axis=1
+                ),
+                0.5,
+            )
+        else:
+            distance = np.power(
+                np.dot(
+                    np.abs(achieved_goal - desired_goal),
+                    weights,
+                ),
+                0.5,
+            )
         
         # Limit reward to a reasonable range
         reward = -np.clip(distance, 0, 5)
         
         return reward
-
-
-
-
-
-
-
-
-
-
 
 
 

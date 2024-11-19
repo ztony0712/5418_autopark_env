@@ -4,7 +4,7 @@ import gymnasium as gym
 from autopark_env.envs.my_new_env import MyNewEnv  # Import our defined parking environment
 
 # Use MyNewEnv for testing
-env = gym.make('my-new-env-v0')
+env = gym.make('my-new-env-v0', render_mode="human")
 obs, info = env.reset()
 done = False
 

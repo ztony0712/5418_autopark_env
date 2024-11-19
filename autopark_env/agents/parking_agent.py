@@ -13,8 +13,8 @@ import os
 class ParkingAgent:
     def __init__(self, env_name='my-new-env-v0', learning_rate=0.001, gamma=0.99, max_timesteps=1000):
         # Check if a GPU is available
-        # self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.device = torch.device("cpu")
+        # self.device = torch.device("cuda" if torch.cuda.is_available() else "gpu")
+        self.device = torch.device("gpu")
         print(f"Using device: {self.device}")
 
         # Initialize environment and parameters
@@ -79,7 +79,7 @@ class ParkingAgent:
                 
                 # Select action
                 with torch.no_grad():
-                    action = self.actor(state_tensor).cpu().numpy()[0]
+                    action = self.actor(state_tensor).gpu().numpy()[0]
                 noise = np.random.normal(0, self.exploration_noise, size=self.env.action_space.shape[0])
                 action = action + noise
                 action = np.clip(action, self.env.action_space.low, self.env.action_space.high)
@@ -221,8 +221,8 @@ class ParkingAgent:
         print(f"Model saved to {path}")
 
     def load_model(self, path='saved_models'):
-        self.actor.load_state_dict(torch.load(f'{path}/actor.pth', map_location=torch.device('cpu')))
-        self.critic.load_state_dict(torch.load(f'{path}/critic.pth', map_location=torch.device('cpu')))
+        self.actor.load_state_dict(torch.load(f'{path}/actor.pth', map_location=torch.device('gpu')))
+        self.critic.load_state_dict(torch.load(f'{path}/critic.pth', map_location=torch.device('gpu')))
         print("Model loaded.")
 
     def test(self, num_episodes=10):
@@ -241,7 +241,7 @@ class ParkingAgent:
                 state_tensor = torch.FloatTensor(state).unsqueeze(0).to(self.device)
                 
                 with torch.no_grad():
-                    action = self.actor(state_tensor).cpu().numpy()[0]
+                    action = self.actor(state_tensor).gpu().numpy()[0]
                 
                 # Action clipping
                 action = np.clip(action, self.env.action_space.low, self.env.action_space.high)

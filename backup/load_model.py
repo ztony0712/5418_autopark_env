@@ -4,11 +4,11 @@ from stable_baselines3 import SAC
 from tqdm import trange
 import gymnasium as gym
 
-env = gym.make('my-new-env-v0')
+env = gym.make('my-new-env-v0', render_mode="human")
 obs, info = env.reset()
 done = False
 
-model = SAC.load("sac_autopark_model", env=env)
+model = SAC.load("models/sac_parking_final", env=env)
 
 N_EPISODES = 10  # @param {type: "integer"}
 
