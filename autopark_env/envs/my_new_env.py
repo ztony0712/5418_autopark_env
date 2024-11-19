@@ -21,7 +21,7 @@ LANE_WIDTH = 40
 LANE_HEIGHT = 100
 VEHICLE_WIDTH = 40
 VEHICLE_HEIGHT = 20
-GOAL_SIZE = 25
+GOAL_SIZE = 10
 STATIC_VEHICLE_PROBABILITY = 0
 SAFE_DISTANCE = 30  # Safety threshold for distance to obstacles
 
@@ -405,21 +405,20 @@ class MyNewEnv(gym.Env):
         pygame.quit()
 
     def check_goal_reached(self, achieved_goal, desired_goal):
+        """检查是否到达目标
         """
-        Check if the agent has successfully reached the goal.
-        Parameters:
-            achieved_goal: The goal actually reached, shape (4,)
-            desired_goal: The expected goal, shape (4,)
-        Returns:
-            bool: Whether successful
-        """
-        # pos_distance = np.linalg.norm(achieved_goal[:2] - desired_goal[:2])
-        # heading_similarity = np.dot(achieved_goal[2:], desired_goal[2:])
-        # return pos_distance < GOAL_SIZE and heading_similarity > 0.95
-        return (
-            self.unwrapped.compute_reward(achieved_goal, desired_goal, {})
-            > -0.003  # Originally -0.12, slightly relaxed
-        )
+        # 将归一化的位置转换回实际像素坐标
+        achieved_pos = achieved_goal[:2] * np.array([SCREEN_WIDTH, SCREEN_HEIGHT])
+        desired_pos = desired_goal[:2] * np.array([SCREEN_WIDTH, SCREEN_HEIGHT])
+        
+        # 计算位置距离
+        pos_distance = np.linalg.norm(achieved_pos - desired_pos)
+        
+        # 计算航向相似度
+        heading_similarity = np.dot(achieved_goal[4:6], desired_goal[4:6])
+        
+        # 使用更宽松的阈值
+        return pos_distance < GOAL_SIZE and heading_similarity > 0.9
 
     def compute_reward(self, achieved_goal, desired_goal, info):
         """计算奖励值
