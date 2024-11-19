@@ -10,7 +10,7 @@ done = False
 
 model = SAC.load("models/sac_parking_final", env=env)
 
-N_EPISODES = 10  # @param {type: "integer"}
+N_EPISODES = 50  # @param {type: "integer"}
 
 for episode in trange(N_EPISODES, desc="Test episodes"):
     obs, info = env.reset()

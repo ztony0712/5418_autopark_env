@@ -8,7 +8,7 @@ import threading
 import time
 import webbrowser
 
-LEARNING_STEPS = 5e4
+LEARNING_STEPS = 3e5
 
 # 启动 TensorBoard 在后台运行
 def start_tensorboard():

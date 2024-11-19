@@ -11,6 +11,13 @@ class Actor(nn.Module):
         self.max_action = max_action
         
     def forward(self, state):
+        # 处理Dict类型的输入
+        if isinstance(state, dict):
+            state = state['observation']
+        # 确保输入是tensor
+        if not isinstance(state, torch.Tensor):
+            state = torch.FloatTensor(state)
+            
         x = torch.relu(self.fc1(state))
         x = torch.relu(self.fc2(x))
         action = torch.tanh(self.action_output(x)) * self.max_action
@@ -24,6 +31,15 @@ class Critic(nn.Module):
         self.q_output = nn.Linear(300, 1)
         
     def forward(self, state, action):
+        # 处理Dict类型的输入
+        if isinstance(state, dict):
+            state = state['observation']
+        # 确保输入是tensor
+        if not isinstance(state, torch.Tensor):
+            state = torch.FloatTensor(state)
+        if not isinstance(action, torch.Tensor):
+            action = torch.FloatTensor(action)
+            
         x = torch.cat([state, action], dim=1)
         x = torch.relu(self.fc1(x))
         x = torch.relu(self.fc2(x))

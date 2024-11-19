@@ -22,13 +22,13 @@ LANE_HEIGHT = 100
 VEHICLE_WIDTH = 40
 VEHICLE_HEIGHT = 20
 GOAL_SIZE = 10
-STATIC_VEHICLE_PROBABILITY = 0
+STATIC_VEHICLE_PROBABILITY = 0.1
 SAFE_DISTANCE = 30  # Safety threshold for distance to obstacles
 
 # Additional global parameters
-# INITIAL_VEHICLE_X = (SCREEN_WIDTH - NUM_COLS * LANE_WIDTH) // 2 - 30
-INITIAL_VEHICLE_X = 400
-INITIAL_VEHICLE_Y = 300
+INITIAL_VEHICLE_X = (SCREEN_WIDTH - NUM_COLS * LANE_WIDTH) // 2 - 30
+# INITIAL_VEHICLE_X = 400
+INITIAL_VEHICLE_Y = 100
 MAX_STEPS = 200
 FPS = 1
 
@@ -113,22 +113,22 @@ class MyNewEnv(gym.Env):
                     self.parking_lot.add_static_vehicle(static_vehicle)
 
     def _create_goal(self):
-        # start_x = (SCREEN_WIDTH - NUM_COLS * LANE_WIDTH) // 2
-        # start_y = (SCREEN_HEIGHT - NUM_ROWS * LANE_HEIGHT) // 2
+        start_x = (SCREEN_WIDTH - NUM_COLS * LANE_WIDTH) // 2
+        start_y = (SCREEN_HEIGHT - NUM_ROWS * LANE_HEIGHT) // 2
 
-        # random_col = random.randint(0, NUM_COLS - 2)
-        # random_row = random.randint(0, NUM_ROWS - 1)
+        random_col = random.randint(0, NUM_COLS - 2)
+        random_row = random.randint(0, NUM_ROWS - 1)
 
-        # goal_x = (start_x + random_col * LANE_WIDTH + (LANE_WIDTH - GOAL_SIZE) // 2) + 5
-        # goal_y = start_y + random_row * LANE_HEIGHT + LANE_HEIGHT // 4
+        goal_x = (start_x + random_col * LANE_WIDTH + (LANE_WIDTH - GOAL_SIZE) // 2) + 5
+        goal_y = start_y + random_row * LANE_HEIGHT + LANE_HEIGHT // 4
 
-        goal_x = 490
-        goal_y = 380
+        # goal_x = 490
+        # goal_y = 380
 
         self.parking_lot.set_goal_position((goal_x, goal_y))
 
         # Set the goal heading based on the goal position relative to the vehicle's current position
-        self.goal_heading = np.arctan2(goal_y - INITIAL_VEHICLE_Y, goal_x - INITIAL_VEHICLE_X)
+        self.goal_heading = np.pi / 2  # 竖直朝向
 
     def _create_walls(self):
         wall_thickness = 10  # Wall thickness
@@ -179,7 +179,7 @@ class MyNewEnv(gym.Env):
         action = np.clip(action, -1, 1)
         
         # 将动作映射到车辆模型的有效范围
-        steering = action[0] * Vehicle.MAX_STEERING_ANGLE   # 将 [-1, 1] 映射到 [-MAX_STEERING_ANGLE, MAX_STEERING_ANGLE]
+        steering = action[0] * Vehicle.MAX_STEERING_ANGLE   # �� [-1, 1] 映射到 [-MAX_STEERING_ANGLE, MAX_STEERING_ANGLE]
         acceleration = action[1] * Vehicle.MAX_ACCELERATION # 将 [-1, 1] 映射到 [-MAX_ACCELERATION, MAX_ACCELERATION]
         
         # 更新车辆状态
@@ -418,7 +418,7 @@ class MyNewEnv(gym.Env):
         heading_similarity = np.dot(achieved_goal[4:6], desired_goal[4:6])
         
         # 使用更宽松的阈值
-        return pos_distance < GOAL_SIZE and heading_similarity > 0.9
+        return pos_distance < GOAL_SIZE and heading_similarity > 0.95
 
     def compute_reward(self, achieved_goal, desired_goal, info):
         """计算奖励值

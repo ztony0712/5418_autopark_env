@@ -3,8 +3,8 @@ from typing import Dict, List
 
 class Vehicle:
     LENGTH: float = 4.0
-    MAX_STEERING_ANGLE: float = np.pi / 20  # About 18*2 degrees, adjustable as needed
-    MAX_STEERING_CHANGE: float = np.pi / 40  # Maximum steering angle change per step, adjustable as needed
+    MAX_STEERING_ANGLE: float = np.pi / 15  # About 18*2 degrees, adjustable as needed
+    MAX_STEERING_CHANGE: float = np.pi / 30  # Maximum steering angle change per step, adjustable as needed
     MAX_SPEED: float = 10.0
     MIN_SPEED: float = -10.0  # Allow reverse
     MAX_ACCELERATION: float = 0.3  # Maximum acceleration
