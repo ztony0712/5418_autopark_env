@@ -10,6 +10,7 @@ from .components.parking_lot import ParkingLot
 from .components.vehicle import StaticVehicle, Vehicle
 from .components.obstacle import Obstacle
 from .components.graphics import VehicleGraphics
+from .components.mpc_controller import MPCController
 
 # Global parameters
 SCREEN_WIDTH = 800
@@ -37,7 +38,7 @@ FPS = 1
 
 
 class MyNewEnv(gym.Env):
-    def __init__(self, render_mode=None):
+    def __init__(self, render_mode=None, use_mpc_freq=5):
         super(MyNewEnv, self).__init__()
         self.render_mode = render_mode
         self.metadata = {
@@ -83,6 +84,11 @@ class MyNewEnv(gym.Env):
         self.collision_penalty = 10
         self.max_steps = MAX_STEPS
         self.safe_distance = SAFE_DISTANCE
+
+        # 初始化MPC控制器
+        self.mpc_controller = MPCController(self)
+
+        self.use_mpc_freq = use_mpc_freq
 
     @property
     def render_modes(self):
@@ -182,12 +188,19 @@ class MyNewEnv(gym.Env):
         action = np.clip(action, -1, 1)
         
         # 将动作映射到车辆模型的有效范围
-        steering = action[0] * Vehicle.MAX_STEERING_ANGLE   #  [-1, 1] 映射到 [-MAX_STEERING_ANGLE, MAX_STEERING_ANGLE]
-        acceleration = action[1] * Vehicle.MAX_ACCELERATION # 将 [-1, 1] 映射到 [-MAX_ACCELERATION, MAX_ACCELERATION]
+        steering = action[0] * Vehicle.MAX_STEERING_ANGLE
+        acceleration = action[1] * Vehicle.MAX_ACCELERATION
         
+        # 只在特定步数使用MPC
+        if self.step_count % self.use_mpc_freq == 0:
+            vehicle_state = self.vehicle.get_state()
+            corrected_action = self.mpc_controller.optimize(vehicle_state, [steering, acceleration])
+        else:
+            corrected_action = [steering, acceleration]
+            
         # 更新车辆状态
-        self.vehicle.action["steering"] = steering
-        self.vehicle.action["acceleration"] = acceleration
+        self.vehicle.action["steering"] = corrected_action[0]
+        self.vehicle.action["acceleration"] = corrected_action[1]
         self.vehicle.step(1.0 / FPS)
         
         # Get new state
