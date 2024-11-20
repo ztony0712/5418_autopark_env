@@ -7,6 +7,8 @@ from tensorboard import program
 import threading
 import time
 import webbrowser
+import torch  # 添加这行
+import os     # 添加这行
 
 LEARNING_STEPS = 3e5
 
@@ -32,14 +34,24 @@ env = gym.make('my-new-env-v0')
 obs, info = env.reset()
 
 her_kwargs = dict(n_sampled_goal=4, goal_selection_strategy='future')
+
+# 在创建模型之前，设置 CUDA 设备
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(f"Using device: {device}")
+
+# 可以设置要使用的 GPU 编号（如果有多个 GPU）
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"  # 使用第一个 GPU
+
+# 创建模型时添加 device 参数
 model = SAC('MultiInputPolicy', env, replay_buffer_class=HerReplayBuffer,
             replay_buffer_kwargs=her_kwargs, verbose=1, 
             tensorboard_log="logs", 
             buffer_size=int(1e6),
             learning_rate=1e-3,
-            gamma=0.95, batch_size=1024, tau=0.05,
-            policy_kwargs=dict(net_arch=[512, 512, 512]),
-            learning_starts=10000)
+            gamma=0.95, batch_size=2048, tau=0.05,
+            policy_kwargs=dict(net_arch=[1024, 1024, 1024]),
+            learning_starts=10000,
+            device=device)
     
 model.learn(int(LEARNING_STEPS))
 model.save("models/sac_parking_final")

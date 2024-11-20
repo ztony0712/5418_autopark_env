@@ -21,7 +21,10 @@ LANE_WIDTH = 40
 LANE_HEIGHT = 100
 VEHICLE_WIDTH = 40
 VEHICLE_HEIGHT = 20
-GOAL_SIZE = 10
+
+GOAL_SIZE = 15
+MIN_HEADING_SIMILARITY = 0.9
+
 STATIC_VEHICLE_PROBABILITY = 0.1
 SAFE_DISTANCE = 30  # Safety threshold for distance to obstacles
 
@@ -179,7 +182,7 @@ class MyNewEnv(gym.Env):
         action = np.clip(action, -1, 1)
         
         # 将动作映射到车辆模型的有效范围
-        steering = action[0] * Vehicle.MAX_STEERING_ANGLE   # �� [-1, 1] 映射到 [-MAX_STEERING_ANGLE, MAX_STEERING_ANGLE]
+        steering = action[0] * Vehicle.MAX_STEERING_ANGLE   #  [-1, 1] 映射到 [-MAX_STEERING_ANGLE, MAX_STEERING_ANGLE]
         acceleration = action[1] * Vehicle.MAX_ACCELERATION # 将 [-1, 1] 映射到 [-MAX_ACCELERATION, MAX_ACCELERATION]
         
         # 更新车辆状态
@@ -418,7 +421,7 @@ class MyNewEnv(gym.Env):
         heading_similarity = np.dot(achieved_goal[4:6], desired_goal[4:6])
         
         # 使用更宽松的阈值
-        return pos_distance < GOAL_SIZE and heading_similarity > 0.95
+        return pos_distance < GOAL_SIZE and heading_similarity > MIN_HEADING_SIMILARITY
 
     def compute_reward(self, achieved_goal, desired_goal, info):
         """计算奖励值

@@ -1,3 +1,4 @@
+import os
 import base64
 from pathlib import Path
 
@@ -12,6 +13,9 @@ from autopark_env.agents.parking_agent import ParkingAgent
 
 display = Display(visible=0, size=(1400, 900))
 display.start()
+
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+print(f'Using device: {device}')
 
 
 def record_videos(env, video_folder="videos"):
@@ -45,7 +49,7 @@ obs, info = env.reset()
 done = truncated = False
 
 agent = ParkingAgent(env_name='my-new-env-v0')
-agent.load_model(path='saved_models/')
+agent.load_model(path='training_scripts/saved_models')
 
 N_EPISODES = 10  # @param {type: "integer"}
 
@@ -62,6 +66,9 @@ for episode in range(N_EPISODES):
     
     while not (done or truncated):
         state_tensor = torch.FloatTensor(state).unsqueeze(0)
+        
+        # 在使用模型之前，将state_tensor移到正确的设备上
+        state_tensor = state_tensor.to(device)  # device应该在之前定义为 cuda 或 cpu
         
         with torch.no_grad():
             action = agent.actor(state_tensor).cpu().numpy()[0]
