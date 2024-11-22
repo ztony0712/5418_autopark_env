@@ -1,0 +1,36 @@
+# 通用训练参数
+training:
+  episodes: 100000
+  max_steps: 100000
+  reward_window: 100
+  print_freq: 10
+  save_freq: 10000
+  initial_noise: 0.1
+  final_noise: 0.05
+  exploration_fraction: 0.8
+  success_window: 100
+
+# DDPG参数
+ddpg:
+  actor_lr: 1.0e-4
+  critic_lr: 1.0e-3
+  gamma: 0.99
+  tau: 0.005
+  batch_size: 256
+  buffer_size: 1000000
+  her_k: 4
+  future_p: 0.8
+
+# TD3参数
+td3:
+  actor_lr: 1.0e-4
+  critic_lr: 1.0e-3
+  gamma: 0.99
+  tau: 0.005
+  policy_noise: 0.2
+  noise_clip: 0.5
+  policy_delay: 2
+  batch_size: 256
+  buffer_size: 1000000
+  her_k: 4
+  future_p: 0.8
