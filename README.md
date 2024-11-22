@@ -9,10 +9,7 @@ This project is created for the NUS ME5418 Machine Learning in Robotics. We are 
 ![Python](https://img.shields.io/badge/Code-Python_3.12-informational?style=flat&logo=Python&logoColor=white&color=2bbc8a)
 
 <!-- > Video Presentation -->
-<!-- [![ROS SLAM, Perception, and Navigation based on Gazebo simulation](https://img.youtube.com/vi/WiEzSJmcEQE/0.jpg)](https://www.youtube.com/watch?v=WiEzSJmcEQE) -->
-
-<!-- As you see in the video, we have implemented the following techniques: -->
-<!-- - For SLAM: The Fast-lio algorithm is chosen for 3D LiDAR SLAM  -->
+[![ROS SLAM, Perception, and Navigation based on Gazebo simulation](https://img.youtube.com/vi/sGfuG12d7Ck/0.jpg)](https://www.youtube.com/watch?v=sGfuG12d7Ck)
 
 For more detail information, please check our report pdf file.
 
@@ -59,25 +56,24 @@ Run test_env.py script to check the environment visualization.
 
 ```bash
 # Display the parking environment visualization
-python testing_scripts/test_env.py
+cd testing_scripts
+python test_env.py
 ```
 
-### 2. Agent Training Process
-Run train_agent.py script to train the agent.
-```bash
-# Train the agent
-python training_scripts/train_agent.py
-```
+### 2. Test Our Trained MPC-SAC Model
+Run load_model.py script to visualization MPC-SAC performance.
 
-Open another terminal and run Tensorboard to visualize the training process.
 ```bash
-# Run Tensorboard
-tensorboard --logdir=runs
+cd testing_scripts
+python load_model.py
 ```
+Other models do not support visualization because they are diverge models.
 
-### 3. Test Agent Performance
-Run video_recording.py script to visualize the agent performance and produce videos.
+### 3. Agent Training Process
+Run train.py script to train the DDPG and TD3. Run sac_training.py script to train the MPC-SAC.
 ```bash
-# Visualize the agent
-python video_recording.py
+cd training_scripts
+python train.py --algo ddpg # Train DDPG 
+python train.py --algo td3 # Train DDPG 
+python sac_training.py # Train MPC-SAC
 ```

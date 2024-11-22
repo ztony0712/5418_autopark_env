@@ -8,7 +8,7 @@ env = gym.make('my-new-env-v0', render_mode="human")
 obs, info = env.reset()
 done = False
 
-model = SAC.load("../models/sac_parking_final", env=env)
+model = SAC.load("../models/mpc_sac_parking_final", env=env)
 
 N_EPISODES = 50  # @param {type: "integer"}
 

@@ -42,7 +42,7 @@ def parse_args():
                       help='Random seed')
     parser.add_argument('--no-tensorboard', action='store_true',
                       help='Disable tensorboard visualization')
-    parser.add_argument('--save-dir', type=str, default='saved_models',
+    parser.add_argument('--save-dir', type=str, default='../models',
                       help='Directory to save models')
     
     return parser.parse_args()

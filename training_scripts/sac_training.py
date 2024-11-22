@@ -10,7 +10,7 @@ import webbrowser
 import torch  # Add this line
 import os     # Add this line
 
-LEARNING_STEPS = 1e6
+LEARNING_STEPS = 1e2
 
 # Start TensorBoard in the background
 def start_tensorboard():
@@ -54,7 +54,7 @@ model = SAC('MultiInputPolicy', env, replay_buffer_class=HerReplayBuffer,
             device=device)
     
 model.learn(int(LEARNING_STEPS))
-model.save("models/sac_parking_final")
+model.save("../models/mpc_sac_parking_final")
 
 env.close()
 
