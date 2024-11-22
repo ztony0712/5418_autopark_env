@@ -10,7 +10,7 @@ import webbrowser
 import torch  # Add this line
 import os     # Add this line
 
-LEARNING_STEPS = 1e2
+LEARNING_STEPS = 1e5
 
 # Start TensorBoard in the background
 def start_tensorboard():

@@ -93,8 +93,13 @@ class BaseAgent:
                     new_state['desired_goal'] = new_goal
                     new_next_state['desired_goal'] = new_goal
                     
+                    # Access the underlying environment
+                    base_env = info['env']
+                    while hasattr(base_env, 'env'):
+                        base_env = base_env.env
+                    
                     # Calculate the new reward using the environment's compute_reward function
-                    new_reward = info['env'].compute_reward(
+                    new_reward = base_env.compute_reward(
                         achieved_goal=next_state['achieved_goal'],
                         desired_goal=new_goal,
                         info=None
@@ -106,7 +111,13 @@ class BaseAgent:
             # Record the success of the original goal
             final_state = self.episode_buffer[-1][3]
             original_goal = self.episode_buffer[0][0]['desired_goal']
-            original_success = info['env'].check_goal_reached(
+            
+            # Unwrap the environment to get to the base environment
+            base_env = info['env']
+            while hasattr(base_env, 'env'):
+                base_env = base_env.env
+            
+            original_success = base_env.check_goal_reached(
                 final_state['achieved_goal'],
                 original_goal
             )
