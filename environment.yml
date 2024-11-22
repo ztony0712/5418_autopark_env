@@ -1,4 +1,4 @@
-name: autopark1
+name: autopark
 channels:
   - pytorch
   - nvidia
@@ -13,7 +13,7 @@ dependencies:
   - certifi=2024.8.30=py312h06a4308_0
   - charset-normalizer=3.3.2=pyhd3eb1b0_0
   - cuda-cudart=12.1.105=0
-  - cuda-cupti=12.1.105=0conda activate autopark1
+  - cuda-cupti=12.1.105=0
   - cuda-libraries=12.1.0=0
   - cuda-nvrtc=12.1.105=0
   - cuda-nvtx=12.1.105=0
